@@ -1,0 +1,143 @@
+const HOMI_LOG = {
+  project: {
+    name: "HOMI Development Log",
+    eyebrow: "Producto / Roadmap / Sprints",
+    title: "Registro de desarrollo de HOMI",
+    description: "Seguimiento visual de las tareas, mejoras, correcciones y decisiones que han ido dando forma a HOMI mes a mes.",
+    lastUpdated: "7 julio 2026",
+    owner: "HOMI",
+    sourceNote: "Mayo y junio se han estructurado a partir de los PDFs de sprint. Julio recoge las tareas definidas en conversación."
+  },
+  statuses: [
+    { key: "Completado", label: "Completado", color: "green", icon: "check" },
+    { key: "Progreso", label: "Progreso", color: "blue", icon: "activity" },
+    { key: "Revisado", label: "Revisado", color: "purple", icon: "shield" },
+    { key: "Pendiente", label: "Pendiente", color: "amber", icon: "clock" },
+    { key: "Arrastrada", label: "Arrastrada", color: "orange", icon: "arrow" }
+  ],
+  months: [
+    {
+      id: "mayo-2026",
+      name: "Mayo 2026",
+      period: "1 mayo - 30 junio 2026",
+      focus: "Publicacion, navegacion y gestion de anuncios",
+      summary: "Sprint centrado en mejorar la experiencia de publicacion, navegacion y gestion de anuncios. Se cerraron mejoras de tracking, mensajeria, flujo de registro, mobile, limites de fotos, perfil y dashboard admin. Varias tareas de calidad y validacion quedaron arrastradas al siguiente mes.",
+      objective: "Reducir friccion para el usuario y reforzar el control comercial y administrativo de la plataforma.",
+      hoursEstimated: 10,
+      hoursReal: 11,
+      responsible: "Aurelio",
+      highlights: [
+        "Se recupero un flujo mas abierto: navegar y ver anuncios antes de registrarse.",
+        "Se mejoro mobile con header y buscador sticky.",
+        "Se añadieron mejoras de perfil, newsletter y dashboard admin.",
+        "Quedaron pendientes tareas de validacion, resaltado de coincidencias y botones por categoria."
+      ],
+      tasks: [
+        { id: "may-001", title: "Pixel de medicion", status: "Completado", priority: "Media", area: "Analitica", origin: "Mayo 2026", description: "Revisar e implementar el pixel correspondiente para medicion, seguimiento o campañas.", details: ["Preparar la base de medicion para futuras acciones comerciales y de marketing."] },
+        { id: "may-002", title: "Mail al receptor del mensaje", status: "Completado", priority: "Alta", area: "Mensajes", origin: "Mayo 2026", description: "Enviar un email o notificacion al receptor cuando reciba un nuevo mensaje dentro de la plataforma.", details: ["Mejora orientada a reducir mensajes perdidos y aumentar respuesta entre usuarios."] },
+        { id: "may-003", title: "Cambiar flujo de usuario y registro", status: "Completado", priority: "Alta", area: "Registro", origin: "Mayo 2026", description: "Permitir buscar, filtrar y ver anuncios sin registrarse. Pedir registro solo al contactar o guardar un anuncio.", details: ["Se recupera el flujo anterior porque reducia friccion inicial.", "Objetivo: que el usuario vea valor antes de crear cuenta."] },
+        { id: "may-004", title: "Mobile - header sticky y buscador", status: "Completado", priority: "Media", area: "Responsive", origin: "Mayo 2026", description: "Hacer que el header mobile y el buscador queden fijos durante el scroll, con boton de filtros junto al buscador.", details: ["Mejora enfocada a navegacion rapida en mobile."] },
+        { id: "may-005", title: "Cambiar limites de fotos en anuncios", status: "Completado", priority: "Media", area: "Publicacion", origin: "Mayo 2026", description: "Ajustar limites de fotos por tipo de anuncio: HOMIS 5, habitaciones 10 y vivienda completa 15.", details: ["Diferencia la necesidad visual segun el tipo de anuncio."] },
+        { id: "may-006", title: "Editar correo y contraseña desde perfil", status: "Revisado", priority: "Media", area: "Perfil", origin: "Mayo 2026", description: "Añadir opciones para editar correo y contraseña desde el perfil, debajo de los datos personales ya editables.", details: ["Incluye revision de que estuviera subido correctamente."] },
+        { id: "may-007", title: "Checkbox de promociones y email marketing", status: "Completado", priority: "Media", area: "Marketing", origin: "Mayo 2026", description: "Añadir una casilla no obligatoria durante el registro para ofertas promocionales o email marketing.", details: ["Si el usuario la marca, debe aparecer como apuntado a newsletter en el panel administrador."] },
+        { id: "may-008", title: "Añadir correo en Dashboard Admin", status: "Completado", priority: "Media", area: "Admin", origin: "Mayo 2026", description: "Mostrar el correo de la persona en el apartado de estancias del Dashboard Admin, ademas del nombre.", details: ["Objetivo: permitir contacto y consejos para mejorar anuncios."] },
+        { id: "may-009", title: "PC - menu lateral sticky e icono de busqueda", status: "Arrastrada", priority: "Media", area: "Navegacion", origin: "Mayo 2026", description: "Hacer sticky el menu lateral en PC y corregir que el icono de busqueda siga visible cuando el menu esta contraido.", details: ["Actualmente el icono desaparece al contraer el menu."] },
+        { id: "may-010", title: "Campos obligatorios en Publica como HOMI", status: "Arrastrada", priority: "Alta", area: "Publicacion", origin: "Mayo 2026", description: "Hacer obligatorios campos clave del flujo de publicacion como HOMI: quien busca, genero, ubicacion, presupuesto, estancia, edad, ocupacion y detalles.", details: ["Busca mejorar la calidad de los anuncios y evitar fichas incompletas."] },
+        { id: "may-011", title: "Quitar resaltado incorrecto en anuncios HOMI", status: "Arrastrada", priority: "Alta", area: "Matching", origin: "Mayo 2026", description: "Quitar el resaltado naranja cuando no haya coincidencias reales o cuando el usuario no haya hecho el test.", details: ["El naranja solo debe aparecer cuando ambos usuarios coincidan realmente en intereses o comodidades."] },
+        { id: "may-012", title: "Boton de publicar anuncio por categoria", status: "Arrastrada", priority: "Media", area: "Publicacion", origin: "Mayo 2026", description: "Añadir un boton de publicar anuncio al lado de cada categoria y abrir popup de anuncios adicionales si el usuario no tiene disponibles.", details: ["El popup debe seguir una logica similar a los planes de pago."] }
+      ]
+    },
+    {
+      id: "junio-2026",
+      name: "Junio 2026",
+      period: "1 junio - 30 junio 2026",
+      focus: "Mejoras puntuales, estabilidad funcional y pendientes de mayo",
+      summary: "Sprint orientado a mejorar la estabilidad funcional de HOMI y cerrar tareas que afectaban al uso diario: mensajes, registro, perfil, planes, reportes, blog, ubicacion, publicacion y responsive. Se completaron mejoras clave, pero quedaron varias tareas de alta prioridad arrastradas hacia julio.",
+      objective: "Mejorar la experiencia de usuario, la gestion de anuncios y la estabilidad funcional de HOMI.",
+      hoursEstimated: 18,
+      hoursReal: null,
+      responsible: "Aurelio",
+      highlights: [
+        "Se desactivo el registro con codigo OTP para reducir friccion.",
+        "Se soluciono la edicion de anuncios publicados.",
+        "Se activo autenticacion con Google y filtros de mensajes.",
+        "Quedaron pendientes problemas importantes de flujo, ubicacion, videos y responsive."
+      ],
+      tasks: [
+        { id: "jun-001", title: "Desactivar verificacion por codigo al registrarse", status: "Revisado", priority: "Alta", area: "Registro", origin: "Junio 2026", description: "Eliminar temporalmente la verificacion mediante codigo OTP en el registro para permitir crear cuenta sin introducir codigo de email.", details: ["Revisado el 16/06/2026 a las 9:10.", "Hecho: registro sin codigo OTP."] },
+        { id: "jun-002", title: "Permitir modificar un anuncio publicado", status: "Revisado", priority: "Alta", area: "Anuncios", origin: "Junio 2026", description: "Resolver la edicion de anuncios ya publicados, incluyendo cambios relevantes desde el formulario de modificacion.", details: ["Revisado el 16/06/2026 a las 9:10.", "Hecho: edicion de anuncios resuelta."] },
+        { id: "jun-003", title: "Quitar prioridad en Plan Infinito para perfiles Pro", status: "Completado", priority: "Alta", area: "Planes", origin: "Junio 2026", description: "Eliminar la prioridad extra de visibilidad de los anuncios del Plan Infinito para perfiles Pro.", details: ["Los anuncios del Plan Infinito deben actuar como anuncios normales."] },
+        { id: "jun-004", title: "Añadir Pro Unlimited desde dashboard", status: "Completado", priority: "Alta", area: "Admin", origin: "Junio 2026", description: "Permitir que admin pueda asignar plan Infinity / Pro Unlimited desde la dashboard.", details: ["Mejora realizada fuera de algunas definiciones iniciales del sprint."] },
+        { id: "jun-005", title: "Revisar boton de reportar anuncio", status: "Revisado", priority: "Media", area: "Reportes", origin: "Junio 2026", description: "Corregir el boton de reportar anuncio para que envie un email con el motivo indicado desde un modal.", details: ["Revisado el 17/06/2026 a las 08:38.", "Hecho: reportar anuncios funcional."] },
+        { id: "jun-006", title: "Mostrar fecha completa del mensaje en el chat", status: "Completado", priority: "Media", area: "Mensajes", origin: "Junio 2026", description: "Añadir fecha completa junto a la hora para que el usuario identifique claramente cuando fue enviado cada mensaje.", details: ["Especialmente importante en conversaciones con mensajes de diferentes dias."] },
+        { id: "jun-007", title: "Añadir filtros de mensajes", status: "Completado", priority: "Media", area: "Mensajes", origin: "Junio 2026", description: "Implementar filtros para mensajes importantes, leidos/no leidos y labels o etiquetas.", details: ["Hecho: filtro de mensajes añadido."] },
+        { id: "jun-008", title: "Registro e inicio de sesion con Google", status: "Completado", priority: "Media", area: "Autenticacion", origin: "Junio 2026", description: "Investigar e implementar autenticacion mediante cuenta de Google.", details: ["Hecho: autenticacion mediante Google."] },
+        { id: "jun-009", title: "Entrar al blog sin autenticar", status: "Completado", priority: "Media", area: "Blog", origin: "Extra Junio 2026", description: "Permitir acceso al blog sin que el usuario tenga que estar autenticado.", details: ["Extra realizado fuera del listado original."] },
+        { id: "jun-010", title: "Llevar a registro desde detalles si no esta autenticado", status: "Completado", priority: "Media", area: "Registro", origin: "Extra Junio 2026", description: "Cuando un usuario no autenticado haga clic en detalles del anuncio, llevarlo al registro.", details: ["Extra realizado fuera del listado original."] },
+        { id: "jun-011", title: "Cambiar flujo desde landings de habitaciones", status: "Arrastrada", priority: "Alta", area: "Landings", origin: "Junio 2026", description: "Al pulsar Ver anuncios, el usuario debe ver tarjetas parcialmente desbloqueadas. El registro/login solo debe aparecer al contactar, ver contacto, ver detalles completos o realizar una accion de mayor intencion.", details: ["Marcada como urgente en el resumen de pendientes."] },
+        { id: "jun-012", title: "Solucionar problema de anuncios adicionales en dashboard", status: "Arrastrada", priority: "Alta", area: "Dashboard", origin: "Junio 2026", description: "Corregir el problema relacionado con anuncios adicionales desde la dashboard.", details: ["Tarea pendiente de alta prioridad."] },
+        { id: "jun-013", title: "Campos obligatorios en Publica como HOMI", status: "Arrastrada", priority: "Alta", area: "Publicacion", origin: "Mayo 2026", description: "Añadir validaciones obligatorias para campos clave del formulario de publicacion como HOMI.", details: ["Debe impedir avanzar o publicar si faltan campos requeridos."] },
+        { id: "jun-014", title: "Quitar resaltado incorrecto en anuncios HOMI", status: "Arrastrada", priority: "Alta", area: "Matching", origin: "Mayo 2026", description: "Corregir la logica de coincidencias para que el resaltado naranja solo aparezca con coincidencias reales.", details: ["No debe aparecer si el usuario no hizo el test o no hay match real."] },
+        { id: "jun-015", title: "Solucionar error al subir videos a anuncios", status: "Arrastrada", priority: "Alta", area: "Multimedia", origin: "Junio 2026", description: "Revisar y corregir el sistema de subida de videos en anuncios, validando formato, tamaño, almacenamiento y asociacion al anuncio.", details: ["Pendiente de alta prioridad."] },
+        { id: "jun-016", title: "Municipios, provincias y mejora de buscador", status: "Arrastrada", priority: "Alta", area: "Buscador", origin: "Junio 2026", description: "Corregir por que solo aparecen provincias y no municipios, y mejorar buscador y ubicacion de anuncios.", details: ["Revisar origen de datos, base de datos, API, frontend o filtros."] },
+        { id: "jun-017", title: "PC - menu lateral sticky e icono de busqueda", status: "Arrastrada", priority: "Media", area: "Navegacion", origin: "Mayo 2026", description: "Mantener sticky el menu lateral en PC y asegurar que el icono de busqueda no desaparezca al contraer el menu.", details: ["Pendiente de mayo mantenida en junio."] },
+        { id: "jun-018", title: "Revisar responsive del header", status: "Arrastrada", priority: "Media", area: "Responsive", origin: "Junio 2026", description: "Detectar en que resolucion se rompe el header y corregir el comportamiento en mobile, tablet y escritorio.", details: ["Tarea pendiente de media prioridad."] },
+        { id: "jun-019", title: "Boton de publicar anuncio por categoria", status: "Arrastrada", priority: "Media", area: "Publicacion", origin: "Mayo 2026", description: "Añadir boton de publicar anuncio junto a cada categoria y gestionar popup si no quedan anuncios disponibles.", details: ["Debe revisar categorias: habitaciones, viviendas y HOMI."] },
+        { id: "jun-020", title: "Revisar tipo de plan en perfil", status: "Arrastrada", priority: "Media", area: "Planes", origin: "Junio 2026", description: "Corregir incoherencias entre la informacion general del plan y lo mostrado dentro del perfil del usuario.", details: ["Comparar y corregir datos mostrados."] },
+        { id: "jun-021", title: "Crear perfil publico para usuarios/profesionales", status: "Arrastrada", priority: "Media", area: "Perfil", origin: "Junio 2026", description: "Crear una pagina publica donde se muestren los anuncios activos de un usuario o profesional, similar al funcionamiento de Wallapop.", details: ["Debe poder accederse desde los anuncios."] },
+        { id: "jun-022", title: "Revisar botones de otras preferencias", status: "Arrastrada", priority: "Media", area: "Preferencias", origin: "Junio 2026", description: "Corregir los botones de otras preferencias dentro de los anuncios para que guarden o apliquen correctamente.", details: ["Pendiente de media prioridad."] },
+        { id: "jun-023", title: "Mejorar la home page", status: "Arrastrada", priority: "Media", area: "Home", origin: "Junio 2026", description: "Revisar la estructura y textos de la home para explicar mejor los tipos de anuncio: HOMI, habitacion y vivienda completa.", details: ["Debe mejorar jerarquia visual y llamadas a la accion."] },
+        { id: "jun-024", title: "Rehacer la descripcion de HOMI", status: "Arrastrada", priority: "Media", area: "Copy", origin: "Junio 2026", description: "Redactar una descripcion mas clara, atractiva y facil de entender para nuevos usuarios.", details: ["Debe explicar mejor que es un HOMI y encajar con el tono de marca."] },
+        { id: "jun-025", title: "Permitir subir fotos arrastrandolas", status: "Arrastrada", priority: "Media", area: "Multimedia", origin: "Junio 2026", description: "Implementar subida drag and drop de fotos con feedback visual, validacion de formato y subida multiple.", details: ["Mejora de experiencia de usuario."] },
+        { id: "jun-026", title: "Revisar puntos de ruptura responsive", status: "Arrastrada", priority: "Media", area: "Responsive", origin: "Junio 2026", description: "Analizar breakpoints y resoluciones problematicas para unificar criterios de maquetacion.", details: ["Validar en diferentes tamaños de pantalla."] },
+        { id: "jun-027", title: "Paginacion: ir al primero o ultimo", status: "Arrastrada", priority: "Media", area: "Anuncios", origin: "Junio 2026", description: "Añadir comportamiento para que los botones de numeros de pagina en anuncios permitan ir directamente al primero o al ultimo.", details: ["Pendiente de media prioridad."] },
+        { id: "jun-028", title: "Ordenar articulos del blog por fecha", status: "Arrastrada", priority: "Media", area: "Blog", origin: "Junio 2026", description: "Permitir ordenar los posts del blog por fecha de publicacion, preferiblemente de mas reciente a mas antiguo por defecto.", details: ["Pendiente de media prioridad."] },
+        { id: "jun-029", title: "Añadir tiempo de lectura aproximado", status: "Arrastrada", priority: "Media", area: "Blog", origin: "Junio 2026", description: "Calcular automaticamente el tiempo de lectura segun extension del articulo y mostrarlo en tarjeta o dentro del articulo.", details: ["Ejemplo visual: Tiempo de lectura: 4 min."] },
+        { id: "jun-030", title: "Sustituir foto de autor por logo HOMI", status: "Arrastrada", priority: "Media", area: "Blog", origin: "Junio 2026", description: "Usar el logo de HOMI como imagen de autor por defecto en articulos, formato 200x200px con fondo #ff7f40.", details: ["Subir imagen a Supabase."] },
+        { id: "jun-031", title: "Añadir bio del autor bajo Autor Verificado", status: "Arrastrada", priority: "Media", area: "Blog", origin: "Junio 2026", description: "Añadir una bio del equipo de HOMI bajo el badge Autor Verificado.", details: ["Texto propuesto: El equipo de HOMI - portal especializado en pisos compartidos fundado en Cuenca.", "Escribimos sobre alquiler, convivencia y busqueda de compañeros de piso en España."] },
+        { id: "jun-032", title: "Crear Linktree en dominio propio", status: "Pendiente", priority: "Baja", area: "Dominio", origin: "Junio 2026", description: "Crear una pagina tipo Linktree dentro del dominio propio con enlaces principales de HOMI y diseño adaptado a marca.", details: ["Optimizada para mobile."] },
+        { id: "jun-033", title: "Crear landing page para QR", status: "Pendiente", priority: "Baja", area: "Landing", origin: "Junio 2026", description: "Crear una landing especifica para trafico procedente de QR, clara, directa, mobile first y con llamada a la accion principal.", details: ["Debe cargar rapido y ser facil de entender."] },
+        { id: "jun-034", title: "Enterprise-signup: beneficios arriba y forms abajo", status: "Pendiente", priority: "Baja", area: "Landing", origin: "Junio 2026", description: "En la pagina Como funciona - Enterprise-signup, colocar beneficios arriba y formulario abajo.", details: ["Pendiente de baja prioridad."] }
+      ]
+    },
+    {
+      id: "julio-2026",
+      name: "Julio 2026",
+      period: "1 julio - 31 julio 2026",
+      focus: "Landings, planes de pago, contacto y flujo de conversion",
+      summary: "Mes enfocado en ordenar el flujo comercial de HOMI: redirigir correctamente los planes de pago, implementar la pagina de contacto, adaptar la landing de propietarios, preparar el envio de confirmaciones con Resend y recuperar un flujo donde el usuario puede explorar antes de registrarse.",
+      objective: "Convertir el avance tecnico en un recorrido comercial mas claro para propietarios y usuarios.",
+      hoursEstimated: null,
+      hoursReal: null,
+      responsible: "Aurelio",
+      highlights: [
+        "Todos los planes de pago deben redirigir a una pagina de contacto.",
+        "La pagina de contacto debe estar orientada a propietarios y enviar confirmacion por email.",
+        "Resend debe confirmar al usuario que su mensaje se ha recibido y que HOMI contactara lo antes posible.",
+        "El flujo debe permitir explorar antes de bloquear por registro."
+      ],
+      tasks: [
+        { id: "jul-001", title: "Implementar landing de propietarios", status: "Progreso", priority: "Alta", area: "Landing", origin: "Julio 2026", description: "Implementar la landing para propietarios con enfoque comercial, explicando el valor de HOMI para alquilar con mas compatibilidad y menos friccion.", details: ["Debe tener tono SaaS moderno y mantener la identidad HOMI.", "Priorizar beneficios, confianza, control y contacto."] },
+        { id: "jul-002", title: "Redirigir todos los planes de pago a contacto", status: "Pendiente", priority: "Alta", area: "Planes", origin: "Julio 2026", description: "Todos los planes de pago deben enviar a la pagina de contacto, no a pagos directos ni a landings distintas.", details: ["La redireccion aplica a planes Pro y al resto de planes de pago."] },
+        { id: "jul-003", title: "Crear pagina de contacto para propietarios", status: "Progreso", priority: "Alta", area: "Contacto", origin: "Julio 2026", description: "Crear una pagina de contacto diseñada por HOMI, especificada como pagina para propietarios.", details: ["Debe recoger datos basicos del propietario y tipo de vivienda.", "Debe funcionar como paso previo antes de publicar o contratar."] },
+        { id: "jul-004", title: "Configurar Resend en pagina de contacto", status: "Pendiente", priority: "Alta", area: "Email", origin: "Julio 2026", description: "Revisar o implementar Resend para enviar correo de confirmacion al propietario tras enviar el formulario.", details: ["El correo debe confirmar que el mensaje se ha recibido.", "Debe indicar que HOMI se pondra en contacto lo antes posible."] },
+        { id: "jul-005", title: "Enviar aviso interno al equipo HOMI", status: "Pendiente", priority: "Alta", area: "Email", origin: "Julio 2026", description: "Cuando entre un formulario de contacto, enviar un aviso interno al equipo para poder responder al propietario.", details: ["Debe incluir nombre, email, telefono, ciudad, tipo de vivienda y mensaje."] },
+        { id: "jul-006", title: "Ajustar flujo de usuarios normales", status: "Progreso", priority: "Alta", area: "Flujo", origin: "Julio 2026", description: "Mantener un flujo donde el usuario pueda explorar anuncios parcialmente antes de registrarse y solo se bloquee en acciones de mayor intencion.", details: ["Registro/login al ver contacto, contactar, guardar o ver detalles completos.", "Debe evitar friccion temprana."] },
+        { id: "jul-007", title: "Corregir flujo desde landings de habitaciones", status: "Arrastrada", priority: "Alta", area: "Landings", origin: "Junio 2026", description: "Tarea urgente arrastrada: al pulsar Ver anuncios desde landings de habitaciones, mostrar tarjetas parcialmente desbloqueadas antes de pedir registro.", details: ["Conecta directamente con la mejora global de flujo de usuario."] },
+        { id: "jul-008", title: "Problema de anuncios adicionales en dashboard", status: "Arrastrada", priority: "Alta", area: "Dashboard", origin: "Junio 2026", description: "Resolver el problema de anuncios adicionales desde la dashboard para que el usuario pueda ampliar correctamente segun su plan o necesidad.", details: ["Debe alinearse con el nuevo flujo de planes/contacto."] },
+        { id: "jul-009", title: "Campos obligatorios en Publica como HOMI", status: "Arrastrada", priority: "Alta", area: "Publicacion", origin: "Mayo 2026", description: "Implementar validaciones obligatorias en el formulario Publica como HOMI para evitar anuncios incompletos.", details: ["Incluye datos de quien busca, genero, ubicacion, presupuesto, estancia, edad, ocupacion y otros detalles."] },
+        { id: "jul-010", title: "Quitar resaltado naranja incorrecto", status: "Arrastrada", priority: "Alta", area: "Matching", origin: "Mayo 2026", description: "Corregir el resaltado naranja para que solo aparezca cuando haya coincidencias reales entre usuarios.", details: ["No debe mostrarse si no hay test realizado o no hay match real."] },
+        { id: "jul-011", title: "Solucionar subida de videos", status: "Arrastrada", priority: "Alta", area: "Multimedia", origin: "Junio 2026", description: "Corregir la subida de videos a anuncios y validar que queden correctamente asociados.", details: ["Revisar frontend, backend, almacenamiento y validaciones."] },
+        { id: "jul-012", title: "Mejorar buscador, provincias y municipios", status: "Arrastrada", priority: "Alta", area: "Buscador", origin: "Junio 2026", description: "Corregir ubicaciones para que aparezcan municipios ademas de provincias y mejorar la precision de busqueda.", details: ["Tarea clave para experiencia de busqueda."] },
+        { id: "jul-013", title: "Ajustar contenido de landing propietarios", status: "Pendiente", priority: "Media", area: "Copy", origin: "Julio 2026", description: "Revisar copy de la landing para hablar mas de tranquilidad, control, menos visitas inutiles y perfiles compatibles.", details: ["Reducir peso de historia si compite con conversion.", "Añadir bloque de dolor y bloque de confianza."] },
+        { id: "jul-014", title: "Compactar menciones en medios", status: "Pendiente", priority: "Media", area: "Marca", origin: "Julio 2026", description: "Mostrar apariciones en medios como prueba social de forma compacta, sin distraer del CTA principal.", details: ["Formato recomendado: banda de logos o lista breve con enlaces secundarios."] },
+        { id: "jul-015", title: "CTA unico de propietarios", status: "Pendiente", priority: "Media", area: "Conversion", origin: "Julio 2026", description: "Unificar el CTA principal de la landing de propietarios hacia contacto, evitando mezclar publicar, contratar o ver ventajas.", details: ["CTA recomendado: Hablar con HOMI o Quiero publicar con ayuda."] },
+        { id: "jul-016", title: "Añadir FAQs de propietarios", status: "Pendiente", priority: "Media", area: "FAQ", origin: "Julio 2026", description: "Añadir preguntas reales de propietario: comision, quien ve el anuncio, si puede elegir a quien responder, contratos, pagos, inmobiliarias y varias habitaciones.", details: ["Debe reducir objeciones antes del contacto."] },
+        { id: "jul-017", title: "Revisar responsive del header", status: "Arrastrada", priority: "Media", area: "Responsive", origin: "Junio 2026", description: "Corregir puntos donde el header se rompe en pantallas pequeñas.", details: ["Validar mobile, tablet y escritorio."] },
+        { id: "jul-018", title: "Mejorar home page", status: "Arrastrada", priority: "Media", area: "Home", origin: "Junio 2026", description: "Explicar mejor los tipos de anuncio en la home: HOMI, habitacion y vivienda completa.", details: ["Debe ser tan claro como el flujo de publicar anuncio."] },
+        { id: "jul-019", title: "Ordenar articulos y mostrar tiempo de lectura", status: "Arrastrada", priority: "Media", area: "Blog", origin: "Junio 2026", description: "Ordenar articulos por fecha de publicacion y mostrar tiempo de lectura aproximado.", details: ["Mejora SEO/GEO y experiencia editorial."] },
+        { id: "jul-020", title: "Enterprise-signup: beneficios arriba y formulario abajo", status: "Pendiente", priority: "Baja", area: "Landing", origin: "Junio 2026", description: "Reordenar la pagina Como funciona - Enterprise-signup con beneficios primero y formulario despues.", details: ["Pendiente baja, pero relevante para claridad comercial."] }
+      ]
+    }
+  ]
+};

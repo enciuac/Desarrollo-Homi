@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HOMI Development Log</title>
+  <meta name="description" content="Registro visual de desarrollo de HOMI: tareas, estados y avances mes a mes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon/favicon-192.png" />
+  <link rel="apple-touch-icon" href="assets/favicon/favicon-192.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="HOMI Development Log">
+        <img class="brand-logo" src="assets/img/homi-logo-horizontal.webp" alt="HOMI" />
+        <span class="brand-subtitle">Development Log</span>
+      </a>
+      <nav class="top-nav" aria-label="Navegacion principal">
+        <a href="#resumen">Resumen</a>
+        <a href="#timeline">Timeline</a>
+        <a href="#roadmap">Roadmap</a>
+      </nav>
+      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Cambiar tema">
+        <span class="theme-icon">◐</span>
+      </button>
+    </header>
+
+    <div id="adminBar" class="admin-bar" aria-label="Modo de edicion"></div>
+
+    <main id="top">
+      <section class="hero-section">
+        <div class="hero-copy">
+          <span class="eyebrow" id="projectEyebrow"></span>
+          <h1 id="projectTitle"></h1>
+          <p id="projectDescription"></p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="#timeline">Ver tareas</a>
+            <a class="secondary-btn" href="#roadmap">Ver arrastradas</a>
+          </div>
+        </div>
+        <aside class="hero-panel" aria-label="Estado del proyecto">
+          <div class="panel-topline">Ultima actualizacion</div>
+          <strong id="lastUpdated"></strong>
+          <p id="sourceNote"></p>
+          <div class="mini-progress">
+            <span>Avance global</span>
+            <strong id="globalProgressLabel">0%</strong>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="globalProgressBar"></span></div>
+        </aside>
+      </section>
+
+      <section id="resumen" class="stats-section" aria-label="Resumen general">
+        <div class="section-heading">
+          <span class="eyebrow">Vision general</span>
+          <h2>Resumen acumulado</h2>
+          <p>Lectura rapida del estado global del desarrollo.</p>
+        </div>
+        <div id="globalStats" class="stats-grid"></div>
+      </section>
+
+      <section class="months-section" aria-label="Meses disponibles">
+        <div id="monthTabs" class="month-tabs"></div>
+      </section>
+
+      <section id="timeline" class="timeline-section">
+        <div class="section-heading split-heading">
+          <div>
+            <span class="eyebrow">Timeline mensual</span>
+            <h2 id="activeMonthTitle">Mes</h2>
+          </div>
+        </div>
+
+        <section class="controls-section task-controls" aria-label="Filtros del mes seleccionado">
+          <div class="controls-card">
+            <label class="search-box" for="searchInput">
+              <span>Buscar dentro del mes</span>
+              <input id="searchInput" type="search" placeholder="Buscar tarea, area, prioridad..." autocomplete="off" />
+            </label>
+            <div>
+              <span class="control-label">Estado de las tareas</span>
+              <div id="statusFilters" class="filter-row"></div>
+            </div>
+          </div>
+        </section>
+
+        <div id="monthStats" class="stats-grid compact"></div>
+        <div id="taskList" class="task-list"></div>
+        <div id="emptyState" class="empty-state" hidden>
+          <strong>No hay tareas con estos filtros.</strong>
+          <span>Prueba a limpiar la busqueda o cambiar el estado seleccionado.</span>
+        </div>
+      </section>
+
+      <section id="roadmap" class="roadmap-section">
+        <div class="section-heading split-heading">
+          <div>
+            <span class="eyebrow">Roadmap vivo</span>
+            <h2>Arrastradas y proximos pasos</h2>
+            <p>Tareas que siguen abiertas o pasan al siguiente bloque de trabajo.</p>
+          </div>
+          <button id="showAllRoadmap" class="secondary-btn small" type="button">Ver todas</button>
+        </div>
+        <div class="roadmap-controls" aria-label="Filtros del roadmap">
+          <span class="control-label">Filtrar roadmap por estado</span>
+          <div id="roadmapFilters" class="filter-row"></div>
+        </div>
+        <div id="roadmapList" class="roadmap-list"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>HOMI Development Log</span>
+      <span>Registro visual del avance real del producto.</span>
+    </footer>
+  </div>
+
+
+
+  <div id="loginModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card small-modal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+      <button class="modal-close" type="button" data-close-modal aria-label="Cerrar">×</button>
+      <span class="eyebrow">Acceso privado</span>
+      <h2 id="loginTitle">Modo edición</h2>
+      <p>Introduce la contraseña para editar tareas, moverlas entre meses y cambiar su estado.</p>
+      <form id="loginForm" class="modal-form">
+        <label>
+          <span>Contraseña</span>
+          <input id="adminPassword" type="password" autocomplete="current-password" required />
+        </label>
+        <p id="loginError" class="form-error" role="alert"></p>
+        <button class="primary-btn" type="submit">Entrar</button>
+      </form>
+    </section>
+  </div>
+
+  <div id="editorModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+      <button class="modal-close" type="button" data-close-modal aria-label="Cerrar">×</button>
+      <span class="eyebrow">Editor de tarea</span>
+      <h2 id="editorTitle">Editar tarea</h2>
+      <form id="editorForm" class="modal-form editor-grid">
+        <label class="full-field">
+          <span>Título</span>
+          <input id="editTaskTitle" type="text" required />
+        </label>
+        <label>
+          <span>Mes</span>
+          <select id="editMonth"></select>
+        </label>
+        <label>
+          <span>Estado</span>
+          <select id="editStatus"></select>
+        </label>
+        <label>
+          <span>Prioridad</span>
+          <select id="editPriority">
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+        </label>
+        <label>
+          <span>Área</span>
+          <input id="editArea" type="text" placeholder="Frontend, Backend, Diseño..." />
+        </label>
+        <label class="full-field">
+          <span>Descripción</span>
+          <textarea id="editDescription" rows="4"></textarea>
+        </label>
+        <label class="full-field">
+          <span>Detalles / notas</span>
+          <textarea id="editDetails" rows="5" placeholder="Una línea por detalle"></textarea>
+        </label>
+        <div class="editor-actions full-field">
+          <button id="deleteTaskBtn" class="secondary-btn small danger" type="button">Eliminar</button>
+          <div>
+            <button class="secondary-btn small" type="button" data-close-modal>Cancelar</button>
+            <button class="primary-btn" type="submit">Guardar cambios</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/script.js"></script>
+</body>
+</html>
