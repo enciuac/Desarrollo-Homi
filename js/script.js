@@ -1,68 +1,38 @@
-const STORAGE_KEY = 'homi-development-log-data-v2';
-const ADMIN_KEY = 'homi-development-log-admin';
-const PASSWORD_HASH = 'bb573a0c76b875b506e711f7f1a70fbe0119d6af95334de3710563f41a3e1714';
-
-const state = {
-  monthId: HOMI_LOG.months[HOMI_LOG.months.length - 1].id,
-  status: 'Todos',
-  query: '',
-  roadmapExpanded: false,
-  roadmapStatus: 'Todos',
-  isAdmin: sessionStorage.getItem(ADMIN_KEY) === 'true',
-  editingTaskId: null
-};
-
-let WORK_LOG = loadWorkLog();
-let statusMap = getStatusMap();
-
-const statusClass = {
+const STATUSES = ['Completado', 'Progreso', 'Revisado', 'Pendiente', 'Arrastrada'];
+const STATUS_CLASS = {
   Completado: 'green',
   Progreso: 'blue',
   Revisado: 'purple',
   Pendiente: 'amber',
   Arrastrada: 'orange'
 };
+const ROADMAP_DEFAULT_STATUSES = ['Arrastrada', 'Pendiente', 'Progreso'];
 
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
+const state = {
+  months: [],
+  tasks: [],
+  monthTitle: null,
+  status: 'Todos',
+  query: '',
+  roadmapExpanded: false,
+  roadmapStatus: 'Todos',
+  isAdmin: false,
+  editingTaskId: null,
+  usingFallback: true,
+  lastUpdatedLabel: ''
+};
+
+function statusBadge(status) {
+  const klass = STATUS_CLASS[status] || 'neutral';
+  return `<span class="badge ${klass}">${status}</span>`;
 }
 
-function loadWorkLog() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : clone(HOMI_LOG);
-  } catch (error) {
-    console.warn('No se pudo cargar el log guardado. Se usa la version base.', error);
-    return clone(HOMI_LOG);
-  }
+function statCard(label, value, subtext = '') {
+  return `<article class="stat-card"><span>${label}</span><strong>${value}</strong>${subtext ? `<small>${subtext}</small>` : ''}</article>`;
 }
 
-function saveWorkLog() {
-  WORK_LOG.project.lastUpdated = new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(WORK_LOG));
-  statusMap = getStatusMap();
-  renderProjectHeader();
-  render();
-}
-
-function getStatusMap() {
-  return Object.fromEntries(WORK_LOG.statuses.map(status => [status.key, status]));
-}
-
-function allTasks() {
-  return WORK_LOG.months.flatMap(month => month.tasks.map(task => ({ ...task, monthId: month.id, monthName: month.name })));
-}
-
-function getActiveMonth() {
-  return WORK_LOG.months.find(month => month.id === state.monthId) || WORK_LOG.months[0];
-}
-
-function findTask(taskId) {
-  for (const month of WORK_LOG.months) {
-    const index = month.tasks.findIndex(task => task.id === taskId);
-    if (index !== -1) return { task: month.tasks[index], month, index };
-  }
-  return null;
+function priorityWeight(priority) {
+  return { Alta: 0, Media: 1, Baja: 2 }[priority] ?? 3;
 }
 
 function countByStatus(tasks) {
@@ -77,36 +47,129 @@ function completionPercent(tasks) {
   return Math.round((done / tasks.length) * 100);
 }
 
-function priorityWeight(priority) {
-  return { Alta: 0, Media: 1, Baja: 2 }[priority] ?? 3;
+function normalized(text) {
+  return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
-function statusBadge(status) {
-  const meta = statusMap[status] || { label: status };
-  const klass = statusClass[status] || 'neutral';
-  return `<span class="badge ${klass}">${meta.label}</span>`;
+function tasksForMonth(title) {
+  return state.tasks.filter(task => task.month === title);
 }
 
-function statCard(label, value, subtext = '') {
-  return `<article class="stat-card"><span>${label}</span><strong>${value}</strong>${subtext ? `<small>${subtext}</small>` : ''}</article>`;
+function getActiveMonth() {
+  return state.months.find(month => month.title === state.monthTitle) || state.months[0] || null;
 }
+
+function findTask(taskId) {
+  return state.tasks.find(task => task.id === taskId) || null;
+}
+
+// ---------- Carga de datos ----------
+
+async function loadData() {
+  if (window.HomiSupabase && HomiSupabase.isConfigured) {
+    try {
+      const [months, tasks] = await Promise.all([HomiSupabase.fetchMonths(), HomiSupabase.fetchTasks()]);
+      state.months = months;
+      state.tasks = tasks;
+      state.usingFallback = false;
+      const latest = tasks.reduce((max, task) => (task.updatedAt && task.updatedAt > max ? task.updatedAt : max), '');
+      state.lastUpdatedLabel = latest
+        ? new Date(latest).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+        : '—';
+      return;
+    } catch (error) {
+      console.error('[HOMI] Error cargando datos de Supabase:', error);
+      showToast('No se pudo conectar con Supabase. Mostrando datos locales de ejemplo.', 'error');
+    }
+  }
+  loadFallbackData();
+}
+
+function loadFallbackData() {
+  state.usingFallback = true;
+  state.months = HOMI_LOG.months.map((month, index) => ({ id: month.id, title: month.name, sortOrder: index }));
+  state.tasks = HOMI_LOG.months.flatMap(month => month.tasks.map((task, index) => ({
+    id: task.id,
+    month: month.name,
+    title: task.title,
+    description: task.description || '',
+    details: task.details || [],
+    status: task.status,
+    priority: task.priority || 'Media',
+    area: task.area || '',
+    isRoadmap: task.status === 'Arrastrada',
+    sortOrder: index
+  })));
+  state.lastUpdatedLabel = HOMI_LOG.project.lastUpdated;
+}
+
+// ---------- Render: cabecera y banner ----------
 
 function renderProjectHeader() {
-  document.getElementById('projectEyebrow').textContent = WORK_LOG.project.eyebrow;
-  document.getElementById('projectTitle').textContent = WORK_LOG.project.title;
-  document.getElementById('projectDescription').textContent = WORK_LOG.project.description;
-  document.getElementById('lastUpdated').textContent = WORK_LOG.project.lastUpdated;
-  document.getElementById('sourceNote').textContent = WORK_LOG.project.sourceNote;
+  document.getElementById('projectEyebrow').textContent = HOMI_LOG.project.eyebrow;
+  document.getElementById('projectTitle').textContent = HOMI_LOG.project.title;
+  document.getElementById('projectDescription').textContent = HOMI_LOG.project.description;
+  document.getElementById('lastUpdated').textContent = state.lastUpdatedLabel;
+  document.getElementById('sourceNote').textContent = HOMI_LOG.project.sourceNote;
 }
 
+function renderDataSourceBanner() {
+  const banner = document.getElementById('dataSourceBanner');
+  const text = document.getElementById('dataSourceBannerText');
+  if (!banner || !text) return;
+  banner.hidden = !state.usingFallback;
+  if (state.usingFallback) {
+    text.textContent = 'Supabase no configurado. Usando datos locales de ejemplo (solo lectura). Configura js/supabase-config.js para activar la edición y el guardado automático.';
+  }
+}
+
+function sqlQuote(value) {
+  return `'${String(value ?? '').replace(/'/g, "''")}'`;
+}
+
+function generateSeedSql() {
+  const monthLines = HOMI_LOG.months.map((month, index) => (
+    `insert into public.development_months (title, sort_order) values (${sqlQuote(month.name)}, ${index}) on conflict (title) do nothing;`
+  ));
+
+  const taskLines = HOMI_LOG.months.flatMap((month, mIndex) => month.tasks.map((task, tIndex) => {
+    const details = (task.details || []).join('\n');
+    const isRoadmap = task.status === 'Arrastrada';
+    return `insert into public.development_tasks (month, title, description, details, status, priority, area, is_roadmap, sort_order) values (${sqlQuote(month.name)}, ${sqlQuote(task.title)}, ${sqlQuote(task.description)}, ${sqlQuote(details)}, ${sqlQuote(task.status)}, ${sqlQuote(task.priority || 'Media')}, ${sqlQuote(task.area || '')}, ${isRoadmap}, ${tIndex});`;
+  }));
+
+  const content = [
+    '-- SQL generado desde js/data.js (datos de ejemplo de HOMI Development Log).',
+    '-- Pégalo en Supabase Dashboard > SQL Editor tras crear las tablas con supabase/schema.sql.',
+    '',
+    '-- Meses',
+    ...monthLines,
+    '',
+    '-- Tareas',
+    ...taskLines,
+    ''
+  ].join('\n');
+
+  const blob = new Blob([content], { type: 'application/sql' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'homi-seed-data.sql';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Render: stats, filtros, meses ----------
+
 function renderGlobalStats() {
-  const tasks = allTasks();
-  const counts = countByStatus(tasks);
-  const percent = completionPercent(tasks);
+  const counts = countByStatus(state.tasks);
+  const percent = completionPercent(state.tasks);
   document.getElementById('globalProgressLabel').textContent = `${percent}%`;
   document.getElementById('globalProgressBar').style.width = `${percent}%`;
   document.getElementById('globalStats').innerHTML = [
-    statCard('Total tareas', tasks.length, 'Mayo - Julio 2026'),
+    statCard('Total tareas', state.tasks.length, 'Todos los meses'),
     statCard('Completadas', counts.Completado, 'Cerradas'),
     statCard('Revisadas', counts.Revisado, 'Hechas y comprobadas'),
     statCard('En progreso', counts.Progreso, 'Abiertas ahora'),
@@ -115,7 +178,7 @@ function renderGlobalStats() {
 }
 
 function renderFilters() {
-  const statuses = ['Todos', ...WORK_LOG.statuses.map(status => status.key)];
+  const statuses = ['Todos', ...STATUSES];
   document.getElementById('statusFilters').innerHTML = statuses.map(status => (
     `<button class="filter-btn ${state.status === status ? 'active' : ''}" data-status="${status}" type="button">${status}</button>`
   )).join('');
@@ -123,13 +186,14 @@ function renderFilters() {
   document.querySelectorAll('[data-status]').forEach(button => {
     button.addEventListener('click', () => {
       state.status = button.dataset.status;
-      render();
+      renderTasks();
+      renderFilters();
     });
   });
 }
 
 function renderRoadmapFilters() {
-  const statuses = ['Todos', 'Progreso', 'Pendiente', 'Arrastrada', 'Revisado', 'Completado'];
+  const statuses = ['Todos', ...STATUSES];
   const holder = document.getElementById('roadmapFilters');
   if (!holder) return;
   holder.innerHTML = statuses.map(status => (
@@ -147,13 +211,14 @@ function renderRoadmapFilters() {
 }
 
 function renderMonthTabs() {
-  document.getElementById('monthTabs').innerHTML = WORK_LOG.months.map(month => (
-    `<button class="month-tab ${state.monthId === month.id ? 'active' : ''}" type="button" data-month="${month.id}">${month.name}</button>`
+  const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
+  document.getElementById('monthTabs').innerHTML = sorted.map(month => (
+    `<button class="month-tab ${state.monthTitle === month.title ? 'active' : ''}" type="button" data-month="${month.title}">${month.title}</button>`
   )).join('');
 
   document.querySelectorAll('[data-month]').forEach(button => {
     button.addEventListener('click', () => {
-      state.monthId = button.dataset.month;
+      state.monthTitle = button.dataset.month;
       state.status = 'Todos';
       state.query = '';
       const search = document.getElementById('searchInput');
@@ -165,14 +230,15 @@ function renderMonthTabs() {
 
 function renderActiveMonth() {
   const month = getActiveMonth();
-  const counts = countByStatus(month.tasks);
-  const percent = completionPercent(month.tasks);
+  const tasks = month ? tasksForMonth(month.title) : [];
+  const counts = countByStatus(tasks);
+  const percent = completionPercent(tasks);
 
-  document.getElementById('activeMonthTitle').textContent = month.name;
+  document.getElementById('activeMonthTitle').textContent = month ? month.title : 'Sin meses todavía';
 
   document.getElementById('monthStats').innerHTML = [
     statCard('Avance', `${percent}%`),
-    statCard('Total', month.tasks.length, 'Tareas del mes'),
+    statCard('Total', tasks.length, 'Tareas del mes'),
     statCard('Completado', counts.Completado, 'Cerradas'),
     statCard('Revisado', counts.Revisado, 'Validadas'),
     statCard('Progreso', counts.Progreso, 'En marcha'),
@@ -180,15 +246,13 @@ function renderActiveMonth() {
   ].join('');
 }
 
-function normalized(text) {
-  return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-}
+// ---------- Render: tarjetas ----------
 
 function filteredTasks(tasks) {
   const query = normalized(state.query);
   return tasks.filter(task => {
     const matchesStatus = state.status === 'Todos' || task.status === state.status;
-    const haystack = normalized([task.title, task.description, task.area, task.priority, task.origin, task.status].join(' '));
+    const haystack = normalized([task.title, task.description, task.area, task.priority, task.status].join(' '));
     const matchesQuery = !query || haystack.includes(query);
     return matchesStatus && matchesQuery;
   }).sort((a, b) => {
@@ -202,24 +266,23 @@ function taskCard(task, isRoadmap = false) {
   const editButton = state.isAdmin
     ? `<button class="edit-task-btn" type="button" data-edit-task="${task.id}">Editar</button>`
     : '';
+  const metaBadges = [
+    task.priority ? `<span class="badge neutral">${task.priority}</span>` : '',
+    task.area ? `<span class="badge neutral">${task.area}</span>` : ''
+  ].join('');
 
   return `
     <article class="${isRoadmap ? 'roadmap-card' : 'task-card'}" ${isRoadmap ? '' : 'data-task-card'}>
       <button class="task-button" type="button" aria-expanded="false">
         <div class="task-top">
           ${statusBadge(task.status)}
-          <span class="badge neutral">${task.priority}</span>
-          <span class="badge neutral">${task.area}</span>
+          ${metaBadges}
         </div>
         <h3>${task.title}</h3>
-        <p>${task.description}</p>
-        <div class="task-footer">
-          <span>${task.monthName || task.origin}</span>
-          <span>·</span>
-          <span>${task.id.toUpperCase()}</span>
-        </div>
+        ${task.description ? `<p>${task.description}</p>` : ''}
+        ${isRoadmap ? `<div class="task-footer"><span>${task.month}</span></div>` : ''}
       </button>
-      ${!isRoadmap ? `<div class="task-details"><div class="task-details-inner"><ul>${(task.details || []).map(item => `<li>${item}</li>`).join('')}</ul></div></div>` : ''}
+      ${!isRoadmap && task.details.length ? `<div class="task-details"><div class="task-details-inner"><ul>${task.details.map(item => `<li>${item}</li>`).join('')}</ul></div></div>` : ''}
       ${editButton}
     </article>
   `;
@@ -227,7 +290,7 @@ function taskCard(task, isRoadmap = false) {
 
 function renderTasks() {
   const month = getActiveMonth();
-  const tasks = filteredTasks(month.tasks).map(task => ({ ...task, monthName: month.name }));
+  const tasks = month ? filteredTasks(tasksForMonth(month.title)) : [];
   const list = document.getElementById('taskList');
   const empty = document.getElementById('emptyState');
 
@@ -254,7 +317,7 @@ function bindTaskCardEvents() {
 }
 
 function roadmapBaseTasks() {
-  return allTasks().filter(task => ['Arrastrada', 'Pendiente', 'Progreso', 'Revisado', 'Completado'].includes(task.status));
+  return state.tasks.filter(task => task.isRoadmap);
 }
 
 function renderRoadmap() {
@@ -262,7 +325,7 @@ function renderRoadmap() {
   if (state.roadmapStatus !== 'Todos') {
     tasks = tasks.filter(task => task.status === state.roadmapStatus);
   } else {
-    tasks = tasks.filter(task => ['Arrastrada', 'Pendiente', 'Progreso'].includes(task.status));
+    tasks = tasks.filter(task => ROADMAP_DEFAULT_STATUSES.includes(task.status));
   }
 
   tasks = tasks.sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
@@ -272,50 +335,67 @@ function renderRoadmap() {
   bindTaskCardEvents();
 }
 
+// ---------- Barra de administración / autenticación ----------
+
 function renderAdminBar() {
   const adminBar = document.getElementById('adminBar');
   if (!adminBar) return;
-  adminBar.innerHTML = state.isAdmin
-    ? `<span>Modo edicion activo</span><button id="addTaskBtn" class="secondary-btn small" type="button">Nueva tarea</button><button id="exportBtn" class="secondary-btn small" type="button">Exportar data.js</button><button id="resetBtn" class="secondary-btn small danger" type="button">Reset local</button><button id="logoutBtn" class="secondary-btn small" type="button">Salir</button>`
-    : `<span>Modo lectura</span><button id="loginBtn" class="secondary-btn small" type="button">Acceso privado</button>`;
+
+  if (state.isAdmin) {
+    adminBar.innerHTML = `
+      <span>Modo edición activo</span>
+      <span>
+        <button id="addTaskBtn" class="secondary-btn small" type="button">Nueva tarea</button>
+        <button id="addMonthBtn" class="secondary-btn small" type="button">Nuevo mes</button>
+        <button id="logoutBtn" class="secondary-btn small" type="button">Salir</button>
+      </span>`;
+  } else {
+    adminBar.innerHTML = `<span>Modo lectura</span><button id="loginBtn" class="secondary-btn small" type="button">Acceso privado</button>`;
+  }
 
   const loginBtn = document.getElementById('loginBtn');
   if (loginBtn) loginBtn.addEventListener('click', openLogin);
 
   const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) logoutBtn.addEventListener('click', () => {
+  if (logoutBtn) logoutBtn.addEventListener('click', async () => {
+    await HomiSupabase.signOut();
     state.isAdmin = false;
-    sessionStorage.removeItem(ADMIN_KEY);
     render();
   });
 
   const addTaskBtn = document.getElementById('addTaskBtn');
   if (addTaskBtn) addTaskBtn.addEventListener('click', () => openEditor(null));
 
-  const resetBtn = document.getElementById('resetBtn');
-  if (resetBtn) resetBtn.addEventListener('click', () => {
-    if (!confirm('Esto borrara tus cambios guardados en este navegador y volvera a la version base.')) return;
-    localStorage.removeItem(STORAGE_KEY);
-    WORK_LOG = clone(HOMI_LOG);
-    renderProjectHeader();
-    render();
-  });
-
-  const exportBtn = document.getElementById('exportBtn');
-  if (exportBtn) exportBtn.addEventListener('click', exportDataFile);
+  const addMonthBtn = document.getElementById('addMonthBtn');
+  if (addMonthBtn) addMonthBtn.addEventListener('click', addMonth);
 }
 
-async function hashText(text) {
-  const encoder = new TextEncoder();
-  const buffer = await crypto.subtle.digest('SHA-256', encoder.encode(text));
-  return Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+async function addMonth() {
+  const title = prompt('Nombre del nuevo mes (ej. Agosto 2026):');
+  if (!title || !title.trim()) return;
+  const trimmed = title.trim();
+  if (state.months.some(month => month.title.toLowerCase() === trimmed.toLowerCase())) {
+    showToast('Ese mes ya existe.', 'error');
+    return;
+  }
+  const sortOrder = state.months.length ? Math.max(...state.months.map(m => m.sortOrder)) + 1 : 0;
+  try {
+    const created = await HomiSupabase.insertMonth(trimmed, sortOrder);
+    state.months.push(created);
+    state.monthTitle = created.title;
+    showToast('Mes creado correctamente.', 'success');
+    render();
+  } catch (error) {
+    console.error(error);
+    showToast('Error al crear el mes: ' + (error.message || error), 'error');
+  }
 }
 
 function openLogin() {
   const modal = document.getElementById('loginModal');
   modal.classList.add('open');
   modal.setAttribute('aria-hidden', 'false');
-  document.getElementById('adminPassword').focus();
+  document.getElementById('adminEmail').focus();
 }
 
 function closeLogin() {
@@ -323,8 +403,44 @@ function closeLogin() {
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
   document.getElementById('loginError').textContent = '';
-  document.getElementById('adminPassword').value = '';
+  document.getElementById('loginForm').reset();
 }
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const errorEl = document.getElementById('loginError');
+  errorEl.textContent = '';
+
+  if (!window.HomiSupabase || !HomiSupabase.isConfigured) {
+    errorEl.textContent = 'Supabase no está configurado todavía. Revisa js/supabase-config.js.';
+    return;
+  }
+
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  const submitBtn = event.target.querySelector('[type="submit"]');
+  submitBtn.disabled = true;
+
+  try {
+    await HomiSupabase.signIn(email, password);
+    const isAdmin = await HomiSupabase.isAdminEmail(email);
+    if (!isAdmin) {
+      await HomiSupabase.signOut();
+      errorEl.textContent = 'Tu cuenta no tiene permisos de edición.';
+      return;
+    }
+    state.isAdmin = true;
+    closeLogin();
+    showToast('Sesión iniciada.', 'success');
+    render();
+  } catch (error) {
+    errorEl.textContent = 'Email o contraseña incorrectos.';
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// ---------- Editor de tareas ----------
 
 function openEditor(taskId) {
   if (!state.isAdmin) return;
@@ -334,29 +450,34 @@ function openEditor(taskId) {
   const monthSelect = document.getElementById('editMonth');
   const statusSelect = document.getElementById('editStatus');
 
-  monthSelect.innerHTML = WORK_LOG.months.map(month => `<option value="${month.id}">${month.name}</option>`).join('');
-  statusSelect.innerHTML = WORK_LOG.statuses.map(status => `<option value="${status.key}">${status.label}</option>`).join('');
+  const sortedMonths = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
+  monthSelect.innerHTML = sortedMonths.map(month => `<option value="${month.title}">${month.title}</option>`).join('');
+  statusSelect.innerHTML = STATUSES.map(status => `<option value="${status}">${status}</option>`).join('');
 
   if (taskId) {
-    const found = findTask(taskId);
-    if (!found) return;
+    const task = findTask(taskId);
+    if (!task) return;
     title.textContent = 'Editar tarea';
-    document.getElementById('editTaskTitle').value = found.task.title || '';
-    document.getElementById('editStatus').value = found.task.status || 'Pendiente';
-    document.getElementById('editMonth').value = found.month.id;
-    document.getElementById('editPriority').value = found.task.priority || 'Media';
-    document.getElementById('editArea').value = found.task.area || '';
-    document.getElementById('editDescription').value = found.task.description || '';
-    document.getElementById('editDetails').value = (found.task.details || []).join('\n');
+    document.getElementById('editTaskTitle').value = task.title || '';
+    document.getElementById('editStatus').value = task.status || 'Pendiente';
+    document.getElementById('editMonth').value = task.month;
+    document.getElementById('editPriority').value = task.priority || 'Media';
+    document.getElementById('editArea').value = task.area || '';
+    document.getElementById('editDescription').value = task.description || '';
+    document.getElementById('editDetails').value = (task.details || []).join('\n');
+    document.getElementById('editIsRoadmap').checked = !!task.isRoadmap;
+    document.getElementById('deleteTaskBtn').hidden = false;
   } else {
     title.textContent = 'Nueva tarea';
     document.getElementById('editTaskTitle').value = '';
     document.getElementById('editStatus').value = 'Pendiente';
-    document.getElementById('editMonth').value = state.monthId;
+    document.getElementById('editMonth').value = state.monthTitle || (sortedMonths[0] && sortedMonths[0].title) || '';
     document.getElementById('editPriority').value = 'Media';
     document.getElementById('editArea').value = '';
     document.getElementById('editDescription').value = '';
     document.getElementById('editDetails').value = '';
+    document.getElementById('editIsRoadmap').checked = false;
+    document.getElementById('deleteTaskBtn').hidden = true;
   }
 
   modal.classList.add('open');
@@ -370,64 +491,85 @@ function closeEditor() {
   state.editingTaskId = null;
 }
 
-function saveEditor() {
-  const targetMonthId = document.getElementById('editMonth').value;
-  const targetMonth = WORK_LOG.months.find(month => month.id === targetMonthId);
-  if (!targetMonth) return;
+async function saveEditor(event) {
+  event.preventDefault();
 
-  const payload = {
-    title: document.getElementById('editTaskTitle').value.trim(),
-    status: document.getElementById('editStatus').value,
-    priority: document.getElementById('editPriority').value,
-    area: document.getElementById('editArea').value.trim() || 'General',
-    description: document.getElementById('editDescription').value.trim(),
-    details: document.getElementById('editDetails').value.split('\n').map(item => item.trim()).filter(Boolean),
-    origin: targetMonth.name
-  };
-
-  if (!payload.title) {
-    alert('La tarea necesita un titulo.');
+  if (!window.HomiSupabase || !HomiSupabase.isConfigured) {
+    showToast('Configura Supabase para poder guardar cambios.', 'error');
     return;
   }
 
-  if (state.editingTaskId) {
-    const found = findTask(state.editingTaskId);
-    if (!found) return;
-    const updated = { ...found.task, ...payload };
-    found.month.tasks.splice(found.index, 1);
-    targetMonth.tasks.push(updated);
-  } else {
-    const safeMonth = targetMonth.id.slice(0, 3);
-    const id = `${safeMonth}-${Date.now().toString(36)}`;
-    targetMonth.tasks.push({ id, ...payload });
+  const monthTitle = document.getElementById('editMonth').value;
+  const payload = {
+    month: monthTitle,
+    title: document.getElementById('editTaskTitle').value.trim(),
+    status: document.getElementById('editStatus').value,
+    priority: document.getElementById('editPriority').value,
+    area: document.getElementById('editArea').value.trim(),
+    description: document.getElementById('editDescription').value.trim(),
+    details: document.getElementById('editDetails').value.split('\n').map(item => item.trim()).filter(Boolean),
+    isRoadmap: document.getElementById('editIsRoadmap').checked
+  };
+
+  if (!payload.title) {
+    alert('La tarea necesita un título.');
+    return;
   }
 
-  state.monthId = targetMonthId;
-  closeEditor();
-  saveWorkLog();
+  const submitBtn = event.target.querySelector('[type="submit"]');
+  submitBtn.disabled = true;
+
+  try {
+    if (state.editingTaskId) {
+      const updated = await HomiSupabase.updateTask(state.editingTaskId, payload);
+      const index = state.tasks.findIndex(task => task.id === state.editingTaskId);
+      if (index !== -1) state.tasks[index] = updated;
+    } else {
+      payload.sortOrder = tasksForMonth(monthTitle).length;
+      const created = await HomiSupabase.insertTask(payload);
+      state.tasks.push(created);
+    }
+    state.monthTitle = monthTitle;
+    closeEditor();
+    showToast('Tarea guardada correctamente.', 'success');
+    render();
+  } catch (error) {
+    console.error(error);
+    showToast('Error al guardar: ' + (error.message || error), 'error');
+  } finally {
+    submitBtn.disabled = false;
+  }
 }
 
-function deleteEditorTask() {
+async function deleteEditorTask() {
   if (!state.editingTaskId) return closeEditor();
-  if (!confirm('Quieres eliminar esta tarea?')) return;
-  const found = findTask(state.editingTaskId);
-  if (found) found.month.tasks.splice(found.index, 1);
-  closeEditor();
-  saveWorkLog();
+  if (!confirm('¿Quieres eliminar esta tarea? Esta acción no se puede deshacer.')) return;
+
+  try {
+    await HomiSupabase.deleteTask(state.editingTaskId);
+    state.tasks = state.tasks.filter(task => task.id !== state.editingTaskId);
+    closeEditor();
+    showToast('Tarea eliminada.', 'success');
+    render();
+  } catch (error) {
+    console.error(error);
+    showToast('Error al eliminar: ' + (error.message || error), 'error');
+  }
 }
 
-function exportDataFile() {
-  const content = `const HOMI_LOG = ${JSON.stringify(WORK_LOG, null, 2)};\n`;
-  const blob = new Blob([content], { type: 'application/javascript' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'data.js';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+// ---------- Toasts ----------
+
+function showToast(message, type = 'info') {
+  const host = document.getElementById('toastHost');
+  if (!host) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  host.appendChild(toast);
+  setTimeout(() => toast.remove(), 4200);
 }
+
+// ---------- Eventos generales ----------
 
 function bindEvents() {
   document.getElementById('searchInput').addEventListener('input', event => {
@@ -444,20 +586,9 @@ function bindEvents() {
     state.roadmapExpanded = !state.roadmapExpanded;
     renderRoadmap();
   });
+  document.getElementById('exportSeedSqlBtn').addEventListener('click', generateSeedSql);
 
-  document.getElementById('loginForm').addEventListener('submit', async event => {
-    event.preventDefault();
-    const password = document.getElementById('adminPassword').value;
-    const hash = await hashText(password);
-    if (hash === PASSWORD_HASH) {
-      state.isAdmin = true;
-      sessionStorage.setItem(ADMIN_KEY, 'true');
-      closeLogin();
-      render();
-    } else {
-      document.getElementById('loginError').textContent = 'Contraseña incorrecta.';
-    }
-  });
+  document.getElementById('loginForm').addEventListener('submit', handleLoginSubmit);
 
   document.querySelectorAll('[data-close-modal]').forEach(button => {
     button.addEventListener('click', () => {
@@ -466,14 +597,14 @@ function bindEvents() {
     });
   });
 
-  document.getElementById('editorForm').addEventListener('submit', event => {
-    event.preventDefault();
-    saveEditor();
-  });
+  document.getElementById('editorForm').addEventListener('submit', saveEditor);
   document.getElementById('deleteTaskBtn').addEventListener('click', deleteEditorTask);
 }
 
+// ---------- Render principal ----------
+
 function render() {
+  renderDataSourceBanner();
   renderGlobalStats();
   renderFilters();
   renderRoadmapFilters();
@@ -484,12 +615,34 @@ function render() {
   renderAdminBar();
 }
 
-function init() {
+async function init() {
   const savedTheme = localStorage.getItem('homi-theme');
   if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
-  renderProjectHeader();
+
   bindEvents();
+  await loadData();
+
+  if (!state.monthTitle && state.months.length) {
+    const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
+    state.monthTitle = sorted[sorted.length - 1].title;
+  }
+
+  renderProjectHeader();
   render();
+
+  if (window.HomiSupabase && HomiSupabase.isConfigured) {
+    const session = await HomiSupabase.getSession();
+    if (session) {
+      state.isAdmin = await HomiSupabase.isAdminEmail(session.user.email);
+      render();
+    }
+    HomiSupabase.onAuthStateChange(async session => {
+      state.isAdmin = session ? await HomiSupabase.isAdminEmail(session.user.email) : false;
+      renderAdminBar();
+      renderTasks();
+      renderRoadmap();
+    });
+  }
 }
 
 init();

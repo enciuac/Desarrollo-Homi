@@ -8,8 +8,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="assets/favicon/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon/favicon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="assets/favicon/favicon-512.png" />
   <link rel="apple-touch-icon" href="assets/favicon/favicon-192.png" />
   <link rel="stylesheet" href="css/styles.css" />
 </head>
@@ -30,6 +32,10 @@
       </button>
     </header>
 
+    <div id="dataSourceBanner" class="data-source-banner" hidden>
+      <span id="dataSourceBannerText"></span>
+      <button id="exportSeedSqlBtn" class="secondary-btn small" type="button">Descargar SQL de estos datos</button>
+    </div>
     <div id="adminBar" class="admin-bar" aria-label="Modo de edicion"></div>
 
     <main id="top">
@@ -128,8 +134,12 @@
       <button class="modal-close" type="button" data-close-modal aria-label="Cerrar">×</button>
       <span class="eyebrow">Acceso privado</span>
       <h2 id="loginTitle">Modo edición</h2>
-      <p>Introduce la contraseña para editar tareas, moverlas entre meses y cambiar su estado.</p>
+      <p>Inicia sesión con tu cuenta autorizada de Supabase para editar tareas, moverlas entre meses y cambiar su estado.</p>
       <form id="loginForm" class="modal-form">
+        <label>
+          <span>Email</span>
+          <input id="adminEmail" type="email" autocomplete="username" required />
+        </label>
         <label>
           <span>Contraseña</span>
           <input id="adminPassword" type="password" autocomplete="current-password" required />
@@ -179,6 +189,10 @@
           <span>Detalles / notas</span>
           <textarea id="editDetails" rows="5" placeholder="Una línea por detalle"></textarea>
         </label>
+        <label class="full-field checkbox-field">
+          <input id="editIsRoadmap" type="checkbox" />
+          <span>Mostrar en el roadmap</span>
+        </label>
         <div class="editor-actions full-field">
           <button id="deleteTaskBtn" class="secondary-btn small danger" type="button">Eliminar</button>
           <div>
@@ -190,7 +204,12 @@
     </section>
   </div>
 
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
   <script src="js/data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/supabase-client.js"></script>
   <script src="js/script.js"></script>
 </body>
 </html>

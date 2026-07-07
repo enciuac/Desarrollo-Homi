@@ -8,13 +8,6 @@ const HOMI_LOG = {
     owner: "HOMI",
     sourceNote: "Mayo y junio se han estructurado a partir de los PDFs de sprint. Julio recoge las tareas definidas en conversación."
   },
-  statuses: [
-    { key: "Completado", label: "Completado", color: "green", icon: "check" },
-    { key: "Progreso", label: "Progreso", color: "blue", icon: "activity" },
-    { key: "Revisado", label: "Revisado", color: "purple", icon: "shield" },
-    { key: "Pendiente", label: "Pendiente", color: "amber", icon: "clock" },
-    { key: "Arrastrada", label: "Arrastrada", color: "orange", icon: "arrow" }
-  ],
   months: [
     {
       id: "mayo-2026",
