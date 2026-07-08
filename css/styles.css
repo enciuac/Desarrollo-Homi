@@ -262,6 +262,8 @@ button { cursor: pointer; }
 .task-details ul { margin: 16px 0 0; padding-left: 18px; color: var(--muted); line-height: 1.65; }
 .empty-state { text-align: center; padding: 46px; border: 1px dashed var(--line); border-radius: var(--radius-xl); color: var(--muted); }
 .empty-state strong { display: block; color: var(--text); margin-bottom: 8px; }
+.show-more-btn { display: flex; width: 100%; justify-content: center; margin-top: 14px; }
+.kanban-column-body + .show-more-btn { margin-top: 10px; }
 .roadmap-section { padding: 26px 0 20px; }
 .roadmap-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .roadmap-card { border-radius: var(--radius-lg); padding: 18px; }

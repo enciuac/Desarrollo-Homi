@@ -23,11 +23,14 @@ const state = {
   priority: 'Todas',
   query: '',
   showCompleted: false,
+  taskListExpanded: false,
   roadmapExpanded: false,
   roadmapStatus: 'Todos',
   roadmapPriority: 'Todas',
   roadmapQuery: '',
   kanbanMode: 'priority',
+  kanbanExpanded: new Set(),
+  proposalsExpanded: false,
   isAdmin: false,
   editingTaskId: null,
   editingMonthId: undefined,
@@ -35,6 +38,21 @@ const state = {
   usingFallback: true,
   lastUpdatedLabel: ''
 };
+
+const CARDS_PER_SECTION = 3;
+
+function renderShowMore(buttonId, totalCount, expanded, onToggle) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+  if (totalCount <= CARDS_PER_SECTION) {
+    btn.hidden = true;
+    btn.onclick = null;
+    return;
+  }
+  btn.hidden = false;
+  btn.textContent = expanded ? 'Ver menos' : `Ver todas (${totalCount})`;
+  btn.onclick = onToggle;
+}
 
 function statusBadge(status) {
   const klass = STATUS_CLASS[status] || 'neutral';
@@ -247,6 +265,8 @@ function renderMonthTabs() {
       state.status = 'Todos';
       state.priority = 'Todas';
       state.query = '';
+      state.taskListExpanded = false;
+      state.kanbanExpanded = new Set();
       const search = document.getElementById('searchInput');
       if (search) search.value = '';
       render();
@@ -334,8 +354,14 @@ function renderTasks() {
   const empty = document.getElementById('emptyState');
 
   empty.hidden = tasks.length !== 0;
-  list.innerHTML = tasks.map(task => taskCard(task)).join('');
+  const visible = state.taskListExpanded ? tasks : tasks.slice(0, CARDS_PER_SECTION);
+  list.innerHTML = visible.map(task => taskCard(task)).join('');
   bindTaskCardEvents();
+
+  renderShowMore('taskListShowMoreBtn', tasks.length, state.taskListExpanded, () => {
+    state.taskListExpanded = !state.taskListExpanded;
+    renderTasks();
+  });
 }
 
 function bindTaskCardEvents() {
@@ -371,7 +397,7 @@ function renderRoadmap() {
     showCompleted: true
   });
 
-  const visible = state.roadmapExpanded ? tasks : tasks.slice(0, 9);
+  const visible = state.roadmapExpanded ? tasks : tasks.slice(0, CARDS_PER_SECTION);
   document.getElementById('roadmapList').innerHTML = visible.map(task => taskCard(task, true)).join('');
   document.getElementById('showAllRoadmap').textContent = state.roadmapExpanded ? 'Ver menos' : `Ver todas (${tasks.length})`;
   bindTaskCardEvents();
@@ -402,6 +428,11 @@ function renderKanban() {
   board.innerHTML = columns.map(columnValue => {
     const columnTasks = tasks.filter(task => (state.kanbanMode === 'priority' ? task.priority : task.status) === columnValue);
     const badge = state.kanbanMode === 'priority' ? priorityBadge(columnValue) : statusBadge(columnValue);
+    const expanded = state.kanbanExpanded.has(columnValue);
+    const visible = expanded ? columnTasks : columnTasks.slice(0, CARDS_PER_SECTION);
+    const showMore = columnTasks.length > CARDS_PER_SECTION
+      ? `<button class="secondary-btn small show-more-btn" type="button" data-kanban-expand="${columnValue}">${expanded ? 'Ver menos' : `Ver todas (${columnTasks.length})`}</button>`
+      : '';
     return `
       <div class="kanban-column">
         <div class="kanban-column-head">
@@ -409,14 +440,23 @@ function renderKanban() {
           <span class="kanban-column-count">${columnTasks.length}</span>
         </div>
         <div class="kanban-column-body">
-          ${columnTasks.length ? columnTasks.map(kanbanCard).join('') : '<p class="kanban-empty">Sin tareas</p>'}
+          ${visible.length ? visible.map(kanbanCard).join('') : '<p class="kanban-empty">Sin tareas</p>'}
         </div>
+        ${showMore}
       </div>
     `;
   }).join('');
 
   document.querySelectorAll('#kanbanBoard [data-edit-task]').forEach(button => {
     button.addEventListener('click', () => openEditor(button.dataset.editTask));
+  });
+  document.querySelectorAll('#kanbanBoard [data-kanban-expand]').forEach(button => {
+    button.addEventListener('click', () => {
+      const key = button.dataset.kanbanExpand;
+      if (state.kanbanExpanded.has(key)) state.kanbanExpanded.delete(key);
+      else state.kanbanExpanded.add(key);
+      renderKanban();
+    });
   });
 }
 
@@ -465,9 +505,15 @@ function renderProposals() {
   const list = document.getElementById('proposalsList');
   if (!list) return;
 
-  list.innerHTML = state.proposals.length
-    ? state.proposals.map(proposalCard).join('')
+  const visible = state.proposalsExpanded ? state.proposals : state.proposals.slice(0, CARDS_PER_SECTION);
+  list.innerHTML = visible.length
+    ? visible.map(proposalCard).join('')
     : '<p class="kanban-empty">No hay propuestas pendientes.</p>';
+
+  renderShowMore('proposalsShowMoreBtn', state.proposals.length, state.proposalsExpanded, () => {
+    state.proposalsExpanded = !state.proposalsExpanded;
+    renderProposals();
+  });
 
   if (!state.isAdmin) return;
   list.querySelectorAll('[data-accept-proposal]').forEach(button => {
@@ -922,6 +968,7 @@ function bindEvents() {
     state.status = 'Todos';
     state.priority = 'Todas';
     state.query = '';
+    state.taskListExpanded = false;
     document.getElementById('searchInput').value = '';
     renderFilters();
     renderTasks();
@@ -949,6 +996,7 @@ function bindEvents() {
   document.querySelectorAll('[data-kanban-mode]').forEach(button => {
     button.addEventListener('click', () => {
       state.kanbanMode = button.dataset.kanbanMode;
+      state.kanbanExpanded = new Set();
       document.querySelectorAll('[data-kanban-mode]').forEach(b => b.classList.toggle('active', b === button));
       renderKanban();
     });
