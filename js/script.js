@@ -25,11 +25,13 @@ const state = {
   status: 'Todos',
   priority: 'Todas',
   query: '',
+  sortMode: 'priority',
   showCompleted: false,
   taskListExpanded: false,
   roadmapExpanded: false,
   roadmapStatus: 'Todos',
   roadmapPriority: 'Todas',
+  roadmapSortMode: 'priority',
   roadmapQuery: '',
   kanbanMode: 'priority',
   kanbanExpanded: new Set(),
@@ -43,6 +45,15 @@ const state = {
 };
 
 const CARDS_PER_SECTION = 3;
+const SORT_MODES = [
+  { key: 'priority', label: 'Prioridad' },
+  { key: 'recent', label: 'Más reciente' }
+];
+
+function formatShortDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
 
 function renderShowMore(buttonId, totalCount, expanded, onToggle) {
   const btn = document.getElementById(buttonId);
@@ -218,6 +229,17 @@ function renderFilters() {
       renderFilters();
     });
   });
+
+  document.getElementById('sortFilters').innerHTML = SORT_MODES.map(mode => (
+    `<button class="filter-btn ${state.sortMode === mode.key ? 'active' : ''}" data-sort-mode="${mode.key}" type="button">${mode.label}</button>`
+  )).join('');
+  document.querySelectorAll('[data-sort-mode]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.sortMode = button.dataset.sortMode;
+      renderTasks();
+      renderFilters();
+    });
+  });
 }
 
 function renderRoadmapFilters() {
@@ -240,6 +262,17 @@ function renderRoadmapFilters() {
     button.addEventListener('click', () => {
       state.roadmapPriority = button.dataset.roadmapPriority;
       state.roadmapExpanded = true;
+      renderRoadmap();
+      renderRoadmapFilters();
+    });
+  });
+
+  document.getElementById('roadmapSortFilters').innerHTML = SORT_MODES.map(mode => (
+    `<button class="filter-btn ${state.roadmapSortMode === mode.key ? 'active' : ''}" data-roadmap-sort-mode="${mode.key}" type="button">${mode.label}</button>`
+  )).join('');
+  document.querySelectorAll('[data-roadmap-sort-mode]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.roadmapSortMode = button.dataset.roadmapSortMode;
       renderRoadmap();
       renderRoadmapFilters();
     });
@@ -306,7 +339,7 @@ function renderActiveMonth() {
 
 function filteredTasks(tasks, filters) {
   const query = normalized(filters.query);
-  return tasks.filter(task => {
+  const filtered = tasks.filter(task => {
     const matchesStatus = filters.status === 'Todos' || task.status === filters.status;
     const matchesPriority = filters.priority === 'Todas' || task.priority === filters.priority;
     const hidingCompleted = !filters.showCompleted && task.status === 'Completado' && filters.status !== 'Completado';
@@ -314,7 +347,17 @@ function filteredTasks(tasks, filters) {
     const haystack = normalized([task.title, task.description, task.area, task.priority, task.status, monthTitle].join(' '));
     const matchesQuery = !query || haystack.includes(query);
     return matchesStatus && matchesPriority && !hidingCompleted && matchesQuery;
-  }).sort((a, b) => {
+  });
+
+  if (filters.sortMode === 'recent') {
+    return filtered.sort((a, b) => {
+      const dateA = a.updatedAt || a.createdAt || '';
+      const dateB = b.updatedAt || b.createdAt || '';
+      return dateB.localeCompare(dateA);
+    });
+  }
+
+  return filtered.sort((a, b) => {
     if (a.status === 'Arrastrada' && b.status !== 'Arrastrada') return -1;
     if (a.status !== 'Arrastrada' && b.status === 'Arrastrada') return 1;
     return priorityWeight(a.priority) - priorityWeight(b.priority);
@@ -325,9 +368,11 @@ function taskCard(task, isRoadmap = false) {
   const editButton = state.isAdmin
     ? `<button class="edit-task-btn" type="button" data-edit-task="${task.id}">Editar</button>`
     : '';
+  const shortDate = formatShortDate(task.updatedAt || task.createdAt);
   const metaBadges = [
     task.priority ? priorityBadge(task.priority) : '',
-    task.area ? `<span class="badge neutral">${task.area}</span>` : ''
+    task.area ? `<span class="badge neutral">${task.area}</span>` : '',
+    shortDate ? `<span class="badge neutral">${shortDate}</span>` : ''
   ].join('');
   const month = isRoadmap ? findMonth(task.monthId) : null;
 
@@ -351,7 +396,7 @@ function taskCard(task, isRoadmap = false) {
 function renderTasks() {
   const month = getActiveMonth();
   const tasks = month
-    ? filteredTasks(tasksForMonth(month.id), { status: state.status, priority: state.priority, query: state.query, showCompleted: state.showCompleted })
+    ? filteredTasks(tasksForMonth(month.id), { status: state.status, priority: state.priority, query: state.query, showCompleted: state.showCompleted, sortMode: state.sortMode })
     : [];
   const list = document.getElementById('taskList');
   const empty = document.getElementById('emptyState');
@@ -397,7 +442,8 @@ function renderRoadmap() {
     status: state.roadmapStatus,
     priority: state.roadmapPriority,
     query: state.roadmapQuery,
-    showCompleted: true
+    showCompleted: true,
+    sortMode: state.roadmapSortMode
   });
 
   const visible = state.roadmapExpanded ? tasks : tasks.slice(0, CARDS_PER_SECTION);
@@ -977,6 +1023,7 @@ function bindEvents() {
     state.status = 'Todos';
     state.priority = 'Todas';
     state.query = '';
+    state.sortMode = 'priority';
     state.taskListExpanded = false;
     document.getElementById('searchInput').value = '';
     renderFilters();
@@ -985,6 +1032,7 @@ function bindEvents() {
   document.getElementById('clearRoadmapFiltersBtn').addEventListener('click', () => {
     state.roadmapStatus = 'Todos';
     state.roadmapPriority = 'Todas';
+    state.roadmapSortMode = 'priority';
     state.roadmapQuery = '';
     document.getElementById('roadmapSearchInput').value = '';
     renderRoadmapFilters();
