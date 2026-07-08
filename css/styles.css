@@ -282,7 +282,7 @@ button { cursor: pointer; }
   .task-list, .roadmap-list { grid-template-columns: 1fr; }
   .split-heading { align-items: start; flex-direction: column; }
 
-  .site-header { top: 8px; margin-top: 8px; border-radius: 22px; position: relative; }
+  .site-header { top: 8px; margin-top: 8px; border-radius: 22px; }
   .nav-toggle { display: grid; }
   .top-nav {
     display: none;
