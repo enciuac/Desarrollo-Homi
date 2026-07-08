@@ -14,6 +14,9 @@ const PRIORITY_CLASS = {
 };
 const ROADMAP_DEFAULT_STATUSES = ['Arrastrada', 'Pendiente', 'Progreso'];
 
+const LOCK_CLOSED_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
+const LOCK_OPEN_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 7.6-1.8"></path></svg>';
+
 const state = {
   months: [],
   tasks: [],
@@ -609,7 +612,7 @@ function updateAdminVisibility() {
   const authBtn = document.getElementById('authToggleBtn');
   if (authBtn) {
     const label = state.isAdmin ? 'Salir (modo edición activo)' : 'Acceso privado';
-    authBtn.querySelector('.auth-icon').textContent = state.isAdmin ? '🔓' : '🔑';
+    authBtn.querySelector('.auth-icon').innerHTML = state.isAdmin ? LOCK_OPEN_SVG : LOCK_CLOSED_SVG;
     authBtn.setAttribute('aria-label', label);
     authBtn.title = label;
     authBtn.classList.toggle('active', state.isAdmin);
