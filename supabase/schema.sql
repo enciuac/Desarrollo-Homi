@@ -105,13 +105,15 @@ create index if not exists development_tasks_is_roadmap_idx on public.developmen
 -- se borra; al rechazarla, se borra directamente.
 
 create table if not exists public.development_proposals (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  description text default '',
-  priority text default 'Media',
-  reporter_name text default '',
-  created_at timestamptz not null default now()
+  id uuid primary key default gen_random_uuid()
 );
+
+alter table public.development_proposals add column if not exists title text not null default '';
+alter table public.development_proposals alter column title drop default;
+alter table public.development_proposals add column if not exists description text default '';
+alter table public.development_proposals add column if not exists priority text default 'Media';
+alter table public.development_proposals add column if not exists reporter_name text default '';
+alter table public.development_proposals add column if not exists created_at timestamptz not null default now();
 
 do $$
 begin
