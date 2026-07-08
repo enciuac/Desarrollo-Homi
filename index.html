@@ -22,7 +22,7 @@
         <img class="brand-logo" src="assets/img/homi-logo-horizontal.webp" alt="HOMI" />
         <span class="brand-subtitle">Development Log</span>
       </a>
-      <nav class="top-nav" aria-label="Navegacion principal">
+      <nav id="topNav" class="top-nav" aria-label="Navegacion principal">
         <a href="#resumen">Resumen</a>
         <a href="#timeline">Timeline</a>
         <a href="#kanban">Kanban</a>
@@ -30,6 +30,9 @@
         <a href="#propuestas">Propuestas</a>
       </nav>
       <div class="header-actions">
+        <button id="navToggleBtn" class="nav-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="topNav">
+          <span class="nav-toggle-bars"><span></span><span></span><span></span></span>
+        </button>
         <button id="themeToggle" class="theme-toggle" type="button" aria-label="Cambiar tema">
           <span class="theme-icon">◐</span>
         </button>

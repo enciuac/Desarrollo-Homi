@@ -961,6 +961,25 @@ function bindEvents() {
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('homi-theme', next);
   });
+
+  const navToggleBtn = document.getElementById('navToggleBtn');
+  const topNav = document.getElementById('topNav');
+  function setNavOpen(open) {
+    topNav.classList.toggle('open', open);
+    navToggleBtn.classList.toggle('active', open);
+    navToggleBtn.setAttribute('aria-expanded', String(open));
+  }
+  navToggleBtn.addEventListener('click', () => {
+    setNavOpen(!topNav.classList.contains('open'));
+  });
+  topNav.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', () => setNavOpen(false));
+  });
+  document.addEventListener('click', event => {
+    if (!topNav.classList.contains('open')) return;
+    if (topNav.contains(event.target) || navToggleBtn.contains(event.target)) return;
+    setNavOpen(false);
+  });
   document.getElementById('showAllRoadmap').addEventListener('click', () => {
     state.roadmapExpanded = !state.roadmapExpanded;
     renderRoadmap();
