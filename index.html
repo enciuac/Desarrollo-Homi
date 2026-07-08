@@ -25,17 +25,21 @@
       <nav class="top-nav" aria-label="Navegacion principal">
         <a href="#resumen">Resumen</a>
         <a href="#timeline">Timeline</a>
+        <a href="#kanban">Kanban</a>
         <a href="#roadmap">Roadmap</a>
+        <a href="#propuestas">Propuestas</a>
       </nav>
-      <button id="themeToggle" class="theme-toggle" type="button" aria-label="Cambiar tema">
-        <span class="theme-icon">◐</span>
-      </button>
+      <div class="header-actions">
+        <button id="themeToggle" class="theme-toggle" type="button" aria-label="Cambiar tema">
+          <span class="theme-icon">◐</span>
+        </button>
+        <button id="authToggleBtn" class="secondary-btn small" type="button">Acceso privado</button>
+      </div>
     </header>
 
     <div id="dataSourceBanner" class="data-source-banner" hidden>
       <span id="dataSourceBannerText"></span>
     </div>
-    <div id="adminBar" class="admin-bar" aria-label="Modo de edicion"></div>
 
     <main id="top">
       <section class="hero-section">
@@ -71,6 +75,7 @@
 
       <section class="months-section" aria-label="Meses disponibles">
         <div id="monthTabs" class="month-tabs"></div>
+        <button id="addMonthBtn" class="secondary-btn small" type="button" hidden>Añadir mes</button>
       </section>
 
       <section id="timeline" class="timeline-section">
@@ -79,13 +84,14 @@
             <span class="eyebrow">Timeline mensual</span>
             <h2 id="activeMonthTitle">Mes</h2>
           </div>
+          <button id="addTaskBtn" class="secondary-btn small" type="button" hidden>Nueva tarea</button>
         </div>
 
         <section class="controls-section task-controls" aria-label="Filtros del mes seleccionado">
           <div class="controls-card">
             <label class="search-box full-field" for="searchInput">
               <span>Buscar dentro del mes</span>
-              <input id="searchInput" type="search" placeholder="Buscar tarea, area, prioridad..." autocomplete="off" />
+              <input id="searchInput" type="search" placeholder="Buscar tarea, mes, prioridad..." autocomplete="off" />
             </label>
             <div id="statusFilterGroup">
               <span class="control-label">Estado</span>
@@ -95,11 +101,11 @@
               <span class="control-label">Prioridad</span>
               <div id="priorityFilters" class="filter-row"></div>
             </div>
-            <div id="areaFilterGroup">
-              <span class="control-label">Área</span>
-              <div id="areaFilters" class="filter-row"></div>
-            </div>
             <div class="filters-footer full-field">
+              <label class="toggle-field">
+                <input id="hideCompletedToggle" type="checkbox" />
+                <span>Mostrar completadas</span>
+              </label>
               <button id="clearMonthFiltersBtn" class="secondary-btn small" type="button">Limpiar filtros</button>
             </div>
           </div>
@@ -111,6 +117,27 @@
           <strong>No hay tareas con estos filtros.</strong>
           <span>Prueba a limpiar la busqueda o cambiar el estado seleccionado.</span>
         </div>
+      </section>
+
+      <section id="kanban" class="kanban-section">
+        <div class="section-heading split-heading">
+          <div>
+            <span class="eyebrow">Vista Kanban</span>
+            <h2>Tablero del mes</h2>
+            <p>Mismo mes que el Timeline, organizado por columnas.</p>
+          </div>
+          <div class="kanban-mode-switch" role="tablist" aria-label="Agrupar Kanban por">
+            <button class="filter-btn active" type="button" data-kanban-mode="priority">Por prioridad</button>
+            <button class="filter-btn" type="button" data-kanban-mode="status">Por estado</button>
+          </div>
+        </div>
+        <div class="controls-card kanban-controls">
+          <label class="toggle-field">
+            <input id="kanbanHideCompletedToggle" type="checkbox" />
+            <span>Mostrar completadas</span>
+          </label>
+        </div>
+        <div id="kanbanBoard" class="kanban-board"></div>
       </section>
 
       <section id="roadmap" class="roadmap-section">
@@ -125,7 +152,7 @@
         <div class="roadmap-controls" aria-label="Filtros del roadmap">
           <label class="search-box full-field" for="roadmapSearchInput">
             <span>Buscar en el roadmap</span>
-            <input id="roadmapSearchInput" type="search" placeholder="Buscar tarea, area, prioridad..." autocomplete="off" />
+            <input id="roadmapSearchInput" type="search" placeholder="Buscar tarea, mes, prioridad..." autocomplete="off" />
           </label>
           <div id="roadmapStatusFilterGroup">
             <span class="control-label">Estado</span>
@@ -135,15 +162,29 @@
             <span class="control-label">Prioridad</span>
             <div id="roadmapPriorityFilters" class="filter-row"></div>
           </div>
-          <div id="roadmapAreaFilterGroup">
-            <span class="control-label">Área</span>
-            <div id="roadmapAreaFilters" class="filter-row"></div>
-          </div>
           <div class="filters-footer full-field">
             <button id="clearRoadmapFiltersBtn" class="secondary-btn small" type="button">Limpiar filtros</button>
           </div>
         </div>
         <div id="roadmapList" class="roadmap-list"></div>
+      </section>
+
+      <section id="propuestas" class="proposals-section">
+        <div class="section-heading split-heading">
+          <div>
+            <span class="eyebrow">Buzón de propuestas</span>
+            <h2>Propuestas del equipo</h2>
+            <p>¿Has visto un fallo o tienes una idea? Cuéntanosla. Un administrador la revisará antes de publicarla en el log.</p>
+          </div>
+          <button id="openProposalBtn" class="primary-btn" type="button">Proponer tarea</button>
+        </div>
+
+        <p id="proposalsPublicNote" class="proposals-public-note">Tu propuesta se envía directamente al equipo: no es pública ni aparece aquí hasta que un administrador la revise y la publique en el log.</p>
+
+        <div id="proposalsAdminPanel" hidden>
+          <span class="control-label">Pendientes de revisión</span>
+          <div id="proposalsList" class="proposals-list"></div>
+        </div>
       </section>
     </main>
 
@@ -262,6 +303,40 @@
             <button class="primary-btn" type="submit">Guardar mes</button>
           </div>
         </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="proposalModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card small-modal" role="dialog" aria-modal="true" aria-labelledby="proposalModalTitle">
+      <button class="modal-close" type="button" data-close-modal aria-label="Cerrar">×</button>
+      <span class="eyebrow">Nueva propuesta</span>
+      <h2 id="proposalModalTitle">Proponer tarea</h2>
+      <p>Cuéntanos qué falla o qué mejorarías. Un administrador la revisará antes de añadirla al log.</p>
+      <form id="proposalForm" class="modal-form">
+        <label>
+          <span>Título</span>
+          <input id="proposalTitle" type="text" required />
+        </label>
+        <label>
+          <span>Descripción</span>
+          <textarea id="proposalDescription" rows="4" placeholder="Qué has visto, dónde, cómo reproducirlo..."></textarea>
+        </label>
+        <label>
+          <span>Prioridad (según tú)</span>
+          <select id="proposalPriority">
+            <option>Alta</option>
+            <option selected>Media</option>
+            <option>Baja</option>
+          </select>
+        </label>
+        <label>
+          <span>Tu nombre (opcional)</span>
+          <input id="proposalReporter" type="text" placeholder="Para que sepamos quién lo propuso" />
+        </label>
+        <p id="proposalFormError" class="form-error" role="alert"></p>
+        <button class="primary-btn" type="submit">Enviar propuesta</button>
       </form>
     </section>
   </div>

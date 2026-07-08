@@ -142,6 +142,44 @@
     if (error) throw error;
   }
 
+  function mapProposalRow(row) {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      priority: row.priority || 'Media',
+      reporterName: row.reporter_name || '',
+      createdAt: row.created_at
+    };
+  }
+
+  // Quien propone no tiene permiso de lectura (RLS), así que este insert NO
+  // encadena .select(): pedir de vuelta la fila creada fallaría bajo RLS.
+  async function insertProposal(proposal) {
+    const sb = ensureClient();
+    const payload = {
+      title: proposal.title,
+      description: proposal.description || '',
+      priority: proposal.priority || 'Media',
+      reporter_name: proposal.reporterName || ''
+    };
+    const { error } = await sb.from('development_proposals').insert(payload);
+    if (error) throw error;
+  }
+
+  async function fetchProposals() {
+    const sb = ensureClient();
+    const { data, error } = await sb.from('development_proposals').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(mapProposalRow);
+  }
+
+  async function deleteProposal(id) {
+    const sb = ensureClient();
+    const { error } = await sb.from('development_proposals').delete().eq('id', id);
+    if (error) throw error;
+  }
+
   async function signIn(email, password) {
     const sb = ensureClient();
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
@@ -191,6 +229,9 @@
     insertTask,
     updateTask,
     deleteTask,
+    insertProposal,
+    fetchProposals,
+    deleteProposal,
     signIn,
     signOut,
     getSession,

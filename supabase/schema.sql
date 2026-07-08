@@ -97,7 +97,33 @@ create index if not exists development_tasks_priority_idx on public.development_
 create index if not exists development_tasks_is_roadmap_idx on public.development_tasks (is_roadmap);
 
 -- ============================================================
--- 3. LISTA BLANCA DE ADMINISTRADORES
+-- 3. PROPUESTAS DEL EQUIPO (buzon de sugerencias)
+-- ============================================================
+-- Cualquiera puede crear una propuesta (sin login). Solo un admin puede
+-- leerlas, revisarlas y borrarlas. No hay edicion: al aceptar una
+-- propuesta el admin crea la tarea real desde el editor y la propuesta
+-- se borra; al rechazarla, se borra directamente.
+
+create table if not exists public.development_proposals (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text default '',
+  priority text default 'Media',
+  reporter_name text default '',
+  created_at timestamptz not null default now()
+);
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'development_proposals_priority_check') then
+    alter table public.development_proposals
+      add constraint development_proposals_priority_check
+      check (priority is null or priority in ('Alta', 'Media', 'Baja'));
+  end if;
+end $$;
+
+-- ============================================================
+-- 4. LISTA BLANCA DE ADMINISTRADORES
 -- ============================================================
 -- Solo estos emails pueden crear, editar o borrar meses/tareas. El email
 -- debe coincidir con el de un usuario creado en Supabase Auth
@@ -111,11 +137,12 @@ create table if not exists public.admin_users (
 -- insert into public.admin_users (email) values ('tu-email@dominio.com');
 
 -- ============================================================
--- 4. ROW LEVEL SECURITY
+-- 5. ROW LEVEL SECURITY
 -- ============================================================
 
 alter table public.development_months enable row level security;
 alter table public.development_tasks enable row level security;
+alter table public.development_proposals enable row level security;
 alter table public.admin_users enable row level security;
 
 -- Lectura pública (cualquier visitante, autenticado o no, puede leer)
@@ -136,6 +163,30 @@ drop policy if exists "read own admin row" on public.admin_users;
 create policy "read own admin row"
   on public.admin_users for select
   using (auth.email() = email);
+
+-- Propuestas: cualquiera (incluso sin login) puede crear una, pero solo
+-- un admin puede leerlas o borrarlas. Nadie puede editarlas ni leer las
+-- de otros — es un buzon de un solo sentido hacia el equipo.
+drop policy if exists "public insert proposals" on public.development_proposals;
+create policy "public insert proposals"
+  on public.development_proposals for insert
+  with check (true);
+
+drop policy if exists "admins read proposals" on public.development_proposals;
+create policy "admins read proposals"
+  on public.development_proposals for select
+  using (
+    auth.role() = 'authenticated'
+    and exists (select 1 from public.admin_users a where a.email = auth.email())
+  );
+
+drop policy if exists "admins delete proposals" on public.development_proposals;
+create policy "admins delete proposals"
+  on public.development_proposals for delete
+  using (
+    auth.role() = 'authenticated'
+    and exists (select 1 from public.admin_users a where a.email = auth.email())
+  );
 
 -- Escritura (insert/update/delete) solo para usuarios autenticados que
 -- además figuren en admin_users. La seguridad vive aquí, no en el
@@ -166,11 +217,10 @@ create policy "admins write tasks"
   );
 
 -- ============================================================
--- 5. DATOS INICIALES DE EJEMPLO (opcional)
+-- 6. DATOS INICIALES DE EJEMPLO (opcional)
 -- ============================================================
--- Puedes generar INSERTs reales a partir de js/data.js con el botón
--- "Descargar SQL de estos datos" del banner de modo lectura (ver README),
--- o crear los meses a mano aquí:
+-- Puedes usar supabase/seed-example-data.sql (generado a partir de
+-- js/data.js) o crear los meses a mano aquí:
 
 -- insert into public.development_months (title, sort_order) values
 --   ('Mayo 2026', 0),

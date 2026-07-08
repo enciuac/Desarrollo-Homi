@@ -17,19 +17,21 @@ const ROADMAP_DEFAULT_STATUSES = ['Arrastrada', 'Pendiente', 'Progreso'];
 const state = {
   months: [],
   tasks: [],
+  proposals: [],
   activeMonthId: null,
   status: 'Todos',
   priority: 'Todas',
-  area: 'Todas',
   query: '',
+  showCompleted: false,
   roadmapExpanded: false,
   roadmapStatus: 'Todos',
   roadmapPriority: 'Todas',
-  roadmapArea: 'Todas',
   roadmapQuery: '',
+  kanbanMode: 'priority',
   isAdmin: false,
   editingTaskId: null,
   editingMonthId: undefined,
+  convertingProposalId: null,
   usingFallback: true,
   lastUpdatedLabel: ''
 };
@@ -90,10 +92,6 @@ function findTask(taskId) {
 
 function findMonth(monthId) {
   return state.months.find(month => month.id === monthId) || null;
-}
-
-function distinctAreas(tasks) {
-  return [...new Set(tasks.map(task => task.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 // ---------- Carga de datos ----------
@@ -178,9 +176,6 @@ function renderGlobalStats() {
 }
 
 function renderFilters() {
-  const month = getActiveMonth();
-  const monthTasks = month ? tasksForMonth(month.id) : [];
-
   document.getElementById('statusFilters').innerHTML = ['Todos', ...STATUSES].map(status => (
     `<button class="filter-btn ${state.status === status ? 'active' : ''}" data-status="${status}" type="button">${status}</button>`
   )).join('');
@@ -202,22 +197,6 @@ function renderFilters() {
       renderFilters();
     });
   });
-
-  const areas = distinctAreas(monthTasks);
-  const areaGroup = document.getElementById('areaFilterGroup');
-  areaGroup.hidden = areas.length === 0;
-  if (areas.length) {
-    document.getElementById('areaFilters').innerHTML = ['Todas', ...areas].map(area => (
-      `<button class="filter-btn ${state.area === area ? 'active' : ''}" data-area="${area}" type="button">${area}</button>`
-    )).join('');
-    document.querySelectorAll('[data-area]').forEach(button => {
-      button.addEventListener('click', () => {
-        state.area = button.dataset.area;
-        renderTasks();
-        renderFilters();
-      });
-    });
-  }
 }
 
 function renderRoadmapFilters() {
@@ -244,23 +223,6 @@ function renderRoadmapFilters() {
       renderRoadmapFilters();
     });
   });
-
-  const areas = distinctAreas(roadmapBaseTasks());
-  const areaGroup = document.getElementById('roadmapAreaFilterGroup');
-  areaGroup.hidden = areas.length === 0;
-  if (areas.length) {
-    document.getElementById('roadmapAreaFilters').innerHTML = ['Todas', ...areas].map(area => (
-      `<button class="filter-btn ${state.roadmapArea === area ? 'active' : ''}" data-roadmap-area="${area}" type="button">${area}</button>`
-    )).join('');
-    document.querySelectorAll('[data-roadmap-area]').forEach(button => {
-      button.addEventListener('click', () => {
-        state.roadmapArea = button.dataset.roadmapArea;
-        state.roadmapExpanded = true;
-        renderRoadmap();
-        renderRoadmapFilters();
-      });
-    });
-  }
 }
 
 function renderMonthTabs() {
@@ -284,7 +246,6 @@ function renderMonthTabs() {
       state.activeMonthId = button.dataset.monthId;
       state.status = 'Todos';
       state.priority = 'Todas';
-      state.area = 'Todas';
       state.query = '';
       const search = document.getElementById('searchInput');
       if (search) search.value = '';
@@ -325,10 +286,11 @@ function filteredTasks(tasks, filters) {
   return tasks.filter(task => {
     const matchesStatus = filters.status === 'Todos' || task.status === filters.status;
     const matchesPriority = filters.priority === 'Todas' || task.priority === filters.priority;
-    const matchesArea = filters.area === 'Todas' || task.area === filters.area;
-    const haystack = normalized([task.title, task.description, task.area, task.priority, task.status].join(' '));
+    const hidingCompleted = !filters.showCompleted && task.status === 'Completado' && filters.status !== 'Completado';
+    const monthTitle = findMonth(task.monthId)?.title || '';
+    const haystack = normalized([task.title, task.description, task.area, task.priority, task.status, monthTitle].join(' '));
     const matchesQuery = !query || haystack.includes(query);
-    return matchesStatus && matchesPriority && matchesArea && matchesQuery;
+    return matchesStatus && matchesPriority && !hidingCompleted && matchesQuery;
   }).sort((a, b) => {
     if (a.status === 'Arrastrada' && b.status !== 'Arrastrada') return -1;
     if (a.status !== 'Arrastrada' && b.status === 'Arrastrada') return 1;
@@ -366,7 +328,7 @@ function taskCard(task, isRoadmap = false) {
 function renderTasks() {
   const month = getActiveMonth();
   const tasks = month
-    ? filteredTasks(tasksForMonth(month.id), { status: state.status, priority: state.priority, area: state.area, query: state.query })
+    ? filteredTasks(tasksForMonth(month.id), { status: state.status, priority: state.priority, query: state.query, showCompleted: state.showCompleted })
     : [];
   const list = document.getElementById('taskList');
   const empty = document.getElementById('emptyState');
@@ -405,8 +367,8 @@ function renderRoadmap() {
   tasks = filteredTasks(tasks, {
     status: state.roadmapStatus,
     priority: state.roadmapPriority,
-    area: state.roadmapArea,
-    query: state.roadmapQuery
+    query: state.roadmapQuery,
+    showCompleted: true
   });
 
   const visible = state.roadmapExpanded ? tasks : tasks.slice(0, 9);
@@ -415,39 +377,217 @@ function renderRoadmap() {
   bindTaskCardEvents();
 }
 
-// ---------- Barra de administración / autenticación ----------
+// ---------- Render: Kanban ----------
 
-function renderAdminBar() {
-  const adminBar = document.getElementById('adminBar');
-  if (!adminBar) return;
+function tasksForKanban() {
+  const month = getActiveMonth();
+  if (!month) return [];
+  return tasksForMonth(month.id).filter(task => state.showCompleted || task.status !== 'Completado');
+}
 
-  if (state.isAdmin) {
-    adminBar.innerHTML = `
-      <span>Modo edición activo</span>
-      <span>
-        <button id="addTaskBtn" class="secondary-btn small" type="button">Nueva tarea</button>
-        <button id="addMonthBtn" class="secondary-btn small" type="button">Añadir mes</button>
-        <button id="logoutBtn" class="secondary-btn small" type="button">Salir</button>
-      </span>`;
-  } else {
-    adminBar.innerHTML = `<span>Modo lectura</span><button id="loginBtn" class="secondary-btn small" type="button">Acceso privado</button>`;
+function kanbanCard(task) {
+  const secondaryBadge = state.kanbanMode === 'priority' ? statusBadge(task.status) : priorityBadge(task.priority);
+  const areaBadge = task.area ? `<span class="badge neutral">${task.area}</span>` : '';
+  return state.isAdmin
+    ? `<button class="kanban-card" type="button" data-edit-task="${task.id}"><span class="task-top">${secondaryBadge}${areaBadge}</span><h4>${task.title}</h4></button>`
+    : `<div class="kanban-card kanban-card-static"><span class="task-top">${secondaryBadge}${areaBadge}</span><h4>${task.title}</h4></div>`;
+}
+
+function renderKanban() {
+  const board = document.getElementById('kanbanBoard');
+  if (!board) return;
+  const tasks = tasksForKanban();
+  const columns = state.kanbanMode === 'priority' ? PRIORITIES : STATUSES;
+
+  board.innerHTML = columns.map(columnValue => {
+    const columnTasks = tasks.filter(task => (state.kanbanMode === 'priority' ? task.priority : task.status) === columnValue);
+    const badge = state.kanbanMode === 'priority' ? priorityBadge(columnValue) : statusBadge(columnValue);
+    return `
+      <div class="kanban-column">
+        <div class="kanban-column-head">
+          ${badge}
+          <span class="kanban-column-count">${columnTasks.length}</span>
+        </div>
+        <div class="kanban-column-body">
+          ${columnTasks.length ? columnTasks.map(kanbanCard).join('') : '<p class="kanban-empty">Sin tareas</p>'}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  document.querySelectorAll('#kanbanBoard [data-edit-task]').forEach(button => {
+    button.addEventListener('click', () => openEditor(button.dataset.editTask));
+  });
+}
+
+// ---------- Propuestas del equipo ----------
+
+async function refreshProposals() {
+  if (!state.isAdmin || !window.HomiSupabase || !HomiSupabase.isConfigured) {
+    state.proposals = [];
+    return;
+  }
+  try {
+    state.proposals = await HomiSupabase.fetchProposals();
+  } catch (error) {
+    console.error('[HOMI] Error cargando propuestas:', error);
+    state.proposals = [];
+  }
+}
+
+function proposalCard(proposal) {
+  const date = proposal.createdAt
+    ? new Date(proposal.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+  const metaBadges = [
+    priorityBadge(proposal.priority),
+    date ? `<span class="badge neutral">${date}</span>` : '',
+    proposal.reporterName ? `<span class="badge neutral">${proposal.reporterName}</span>` : ''
+  ].join('');
+
+  return `
+    <article class="proposal-card">
+      <div class="task-top">${metaBadges}</div>
+      <h3>${proposal.title}</h3>
+      ${proposal.description ? `<p>${proposal.description}</p>` : ''}
+      <div class="editor-actions">
+        <button class="secondary-btn small danger" type="button" data-discard-proposal="${proposal.id}">Descartar</button>
+        <button class="primary-btn small" type="button" data-accept-proposal="${proposal.id}">Aceptar y publicar</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderProposals() {
+  const adminPanel = document.getElementById('proposalsAdminPanel');
+  const publicNote = document.getElementById('proposalsPublicNote');
+  const list = document.getElementById('proposalsList');
+  if (!adminPanel || !list) return;
+
+  adminPanel.hidden = !state.isAdmin;
+  publicNote.hidden = state.isAdmin;
+  if (!state.isAdmin) return;
+
+  list.innerHTML = state.proposals.length
+    ? state.proposals.map(proposalCard).join('')
+    : '<p class="kanban-empty">No hay propuestas pendientes.</p>';
+
+  list.querySelectorAll('[data-accept-proposal]').forEach(button => {
+    button.addEventListener('click', () => openProposalToTask(button.dataset.acceptProposal));
+  });
+  list.querySelectorAll('[data-discard-proposal]').forEach(button => {
+    button.addEventListener('click', () => discardProposal(button.dataset.discardProposal));
+  });
+}
+
+function openProposalToTask(proposalId) {
+  const proposal = state.proposals.find(item => item.id === proposalId);
+  if (!proposal) return;
+  if (!state.months.length) {
+    showToast('Crea primero un mes antes de aceptar propuestas.', 'error');
+    return;
   }
 
-  const loginBtn = document.getElementById('loginBtn');
-  if (loginBtn) loginBtn.addEventListener('click', openLogin);
+  state.convertingProposalId = proposalId;
+  openEditor(null);
+  document.getElementById('editorTitle').textContent = 'Publicar propuesta como tarea';
+  document.getElementById('editTaskTitle').value = proposal.title;
+  document.getElementById('editDescription').value = proposal.description || '';
+  document.getElementById('editPriority').value = proposal.priority || 'Media';
+}
 
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) logoutBtn.addEventListener('click', async () => {
-    await HomiSupabase.signOut();
-    state.isAdmin = false;
-    render();
-  });
+async function discardProposal(proposalId) {
+  if (!confirm('¿Descartar esta propuesta? Esta acción no se puede deshacer.')) return;
+  try {
+    await HomiSupabase.deleteProposal(proposalId);
+    state.proposals = state.proposals.filter(item => item.id !== proposalId);
+    showToast('Propuesta descartada.', 'success');
+    renderProposals();
+  } catch (error) {
+    console.error(error);
+    showToast('Error al descartar: ' + (error.message || error), 'error');
+  }
+}
+
+function openProposalModal() {
+  document.getElementById('proposalForm').reset();
+  document.getElementById('proposalFormError').textContent = '';
+  const modal = document.getElementById('proposalModal');
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeProposalModal() {
+  const modal = document.getElementById('proposalModal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+async function handleProposalSubmit(event) {
+  event.preventDefault();
+  const errorEl = document.getElementById('proposalFormError');
+  errorEl.textContent = '';
+
+  if (!window.HomiSupabase || !HomiSupabase.isConfigured) {
+    errorEl.textContent = 'Las propuestas no están disponibles todavía (Supabase no configurado).';
+    return;
+  }
+
+  const payload = {
+    title: document.getElementById('proposalTitle').value.trim(),
+    description: document.getElementById('proposalDescription').value.trim(),
+    priority: document.getElementById('proposalPriority').value,
+    reporterName: document.getElementById('proposalReporter').value.trim()
+  };
+  if (!payload.title) {
+    errorEl.textContent = 'La propuesta necesita un título.';
+    return;
+  }
+
+  const submitBtn = event.target.querySelector('[type="submit"]');
+  submitBtn.disabled = true;
+
+  try {
+    await HomiSupabase.insertProposal(payload);
+    closeProposalModal();
+    showToast('¡Gracias! Tu propuesta se ha enviado correctamente.', 'success');
+  } catch (error) {
+    console.error(error);
+    errorEl.textContent = 'Error al enviar: ' + (error.message || error);
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// ---------- Administración / autenticación ----------
+
+function updateAdminVisibility() {
+  const authBtn = document.getElementById('authToggleBtn');
+  if (authBtn) authBtn.textContent = state.isAdmin ? 'Salir' : 'Acceso privado';
 
   const addTaskBtn = document.getElementById('addTaskBtn');
-  if (addTaskBtn) addTaskBtn.addEventListener('click', () => openEditor(null));
+  if (addTaskBtn) addTaskBtn.hidden = !state.isAdmin;
 
   const addMonthBtn = document.getElementById('addMonthBtn');
-  if (addMonthBtn) addMonthBtn.addEventListener('click', () => openMonthEditor(null));
+  if (addMonthBtn) addMonthBtn.hidden = !state.isAdmin;
+}
+
+function syncShowCompletedToggles() {
+  const monthToggle = document.getElementById('hideCompletedToggle');
+  const kanbanToggle = document.getElementById('kanbanHideCompletedToggle');
+  if (monthToggle) monthToggle.checked = state.showCompleted;
+  if (kanbanToggle) kanbanToggle.checked = state.showCompleted;
+}
+
+async function handleAuthToggle() {
+  if (state.isAdmin) {
+    await HomiSupabase.signOut();
+    state.isAdmin = false;
+    await refreshProposals();
+    render();
+  } else {
+    openLogin();
+  }
 }
 
 function openLogin() {
@@ -489,6 +629,7 @@ async function handleLoginSubmit(event) {
       return;
     }
     state.isAdmin = true;
+    await refreshProposals();
     closeLogin();
     showToast('Sesión iniciada.', 'success');
     render();
@@ -674,6 +815,7 @@ function closeEditor() {
   modal.classList.remove('open');
   modal.setAttribute('aria-hidden', 'true');
   state.editingTaskId = null;
+  state.convertingProposalId = null;
 }
 
 async function saveEditor(event) {
@@ -718,6 +860,14 @@ async function saveEditor(event) {
     } else {
       const created = await HomiSupabase.insertTask(payload);
       state.tasks.push(created);
+      if (state.convertingProposalId) {
+        try {
+          await HomiSupabase.deleteProposal(state.convertingProposalId);
+          state.proposals = state.proposals.filter(item => item.id !== state.convertingProposalId);
+        } catch (proposalError) {
+          console.error('[HOMI] La tarea se creó pero no se pudo borrar la propuesta original:', proposalError);
+        }
+      }
     }
     state.activeMonthId = monthId;
     closeEditor();
@@ -773,7 +923,6 @@ function bindEvents() {
   document.getElementById('clearMonthFiltersBtn').addEventListener('click', () => {
     state.status = 'Todos';
     state.priority = 'Todas';
-    state.area = 'Todas';
     state.query = '';
     document.getElementById('searchInput').value = '';
     renderFilters();
@@ -782,11 +931,29 @@ function bindEvents() {
   document.getElementById('clearRoadmapFiltersBtn').addEventListener('click', () => {
     state.roadmapStatus = 'Todos';
     state.roadmapPriority = 'Todas';
-    state.roadmapArea = 'Todas';
     state.roadmapQuery = '';
     document.getElementById('roadmapSearchInput').value = '';
     renderRoadmapFilters();
     renderRoadmap();
+  });
+  document.getElementById('hideCompletedToggle').addEventListener('change', event => {
+    state.showCompleted = event.target.checked;
+    syncShowCompletedToggles();
+    renderTasks();
+    renderKanban();
+  });
+  document.getElementById('kanbanHideCompletedToggle').addEventListener('change', event => {
+    state.showCompleted = event.target.checked;
+    syncShowCompletedToggles();
+    renderTasks();
+    renderKanban();
+  });
+  document.querySelectorAll('[data-kanban-mode]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.kanbanMode = button.dataset.kanbanMode;
+      document.querySelectorAll('[data-kanban-mode]').forEach(b => b.classList.toggle('active', b === button));
+      renderKanban();
+    });
   });
   document.getElementById('themeToggle').addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
@@ -799,6 +966,11 @@ function bindEvents() {
     renderRoadmap();
   });
 
+  document.getElementById('authToggleBtn').addEventListener('click', handleAuthToggle);
+  document.getElementById('addTaskBtn').addEventListener('click', () => openEditor(null));
+  document.getElementById('addMonthBtn').addEventListener('click', () => openMonthEditor(null));
+  document.getElementById('openProposalBtn').addEventListener('click', openProposalModal);
+
   document.getElementById('loginForm').addEventListener('submit', handleLoginSubmit);
 
   document.querySelectorAll('[data-close-modal]').forEach(button => {
@@ -806,6 +978,7 @@ function bindEvents() {
       closeLogin();
       closeEditor();
       closeMonthEditor();
+      closeProposalModal();
     });
   });
 
@@ -814,6 +987,8 @@ function bindEvents() {
 
   document.getElementById('monthForm').addEventListener('submit', saveMonthEditor);
   document.getElementById('deleteMonthBtn').addEventListener('click', deleteMonthEditor);
+
+  document.getElementById('proposalForm').addEventListener('submit', handleProposalSubmit);
 }
 
 // ---------- Render principal ----------
@@ -826,8 +1001,11 @@ function render() {
   renderMonthTabs();
   renderActiveMonth();
   renderTasks();
+  renderKanban();
   renderRoadmap();
-  renderAdminBar();
+  renderProposals();
+  updateAdminVisibility();
+  syncShowCompletedToggles();
 }
 
 async function init() {
@@ -849,10 +1027,12 @@ async function init() {
     const session = await HomiSupabase.getSession();
     if (session) {
       state.isAdmin = await HomiSupabase.isAdminEmail(session.user.email);
+      await refreshProposals();
       render();
     }
     HomiSupabase.onAuthStateChange(async session => {
       state.isAdmin = session ? await HomiSupabase.isAdminEmail(session.user.email) : false;
+      await refreshProposals();
       render();
     });
   }

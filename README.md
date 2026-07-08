@@ -1,6 +1,6 @@
 # HOMI Development Log
 
-App interna (GitHub Pages) con estilo SaaS + identidad HOMI para llevar el registro de desarrollo del producto: meses, tareas, estados, prioridades, áreas, roadmap y modo edición.
+App interna (GitHub Pages) con estilo SaaS + identidad HOMI para llevar el registro de desarrollo del producto: meses, tareas, estados, prioridades, roadmap, vista Kanban, buzón de propuestas del equipo y modo edición.
 
 La persistencia real es **Supabase** (Postgres + Auth + RLS). `js/data.js` solo se usa como **dato de ejemplo de solo lectura** cuando Supabase todavía no está configurado — no es el sistema de guardado. No existe edición basada en `localStorage`.
 
@@ -60,12 +60,14 @@ Crea:
 
 - **`development_months`**: `id uuid`, `title text unique`, `sort_order integer`, `summary text`, `created_at`, `updated_at`.
 - **`development_tasks`**: `id uuid`, `month_id uuid` (referencia a `development_months.id`, `on delete restrict`), `title`, `description`, `details`, `status`, `priority`, `area`, `is_roadmap boolean`, `sort_order`, `created_at`, `updated_at`.
+- **`development_proposals`**: `id uuid`, `title`, `description`, `priority`, `reporter_name`, `created_at` — el buzón de propuestas del equipo (ver sección 4.2).
 - **`admin_users`** (`email`): lista blanca de quién puede editar.
-- **Constraints**: `status` solo admite `Completado | Progreso | Revisado | Pendiente | Arrastrada`; `priority` solo admite `Alta | Media | Baja` (o vacío).
+- **Constraints**: `status` solo admite `Completado | Progreso | Revisado | Pendiente | Arrastrada`; `priority` (en tareas y propuestas) solo admite `Alta | Media | Baja` (o vacío).
 - **`on delete restrict`** en `month_id`: Postgres bloquea a nivel de base de datos borrar un mes que todavía tiene tareas asociadas, aunque alguien se salte el frontend.
-- **Row Level Security** activado en las tres tablas, con estas políticas:
+- **Row Level Security** activado en las cuatro tablas, con estas políticas:
   - **Lectura pública** de meses y tareas (cualquier visitante, sin login).
-  - **Escritura (insert/update/delete)** solo si el usuario está autenticado **y** su email aparece en `admin_users`.
+  - **Escritura (insert/update/delete)** en meses y tareas solo si el usuario está autenticado **y** su email aparece en `admin_users`.
+  - **Propuestas**: cualquiera (incluso sin login) puede crear una (`insert`), pero solo un admin puede leerlas o borrarlas — nadie puede leer las propuestas de otros, ni siquiera la suya propia después de enviarla.
   - Un usuario autenticado solo puede leer su propia fila de `admin_users` (para que el frontend sepa si debe mostrar el modo edición), nunca la lista completa.
 
 La seguridad depende de estas políticas, **no** de ocultar botones en el frontend ni la `anon key` (esa clave está pensada para ser pública).
@@ -104,16 +106,15 @@ Esto es una migración puntual (no hay ningún botón en la web para generarlo, 
 
 ## 3. Cómo usar el modo edición
 
-1. Con Supabase ya configurado, pulsa **"Acceso privado"** en la barra superior.
+1. Con Supabase ya configurado, pulsa **"Acceso privado"** en la cabecera (arriba a la derecha, junto al selector de tema).
 2. Introduce el email y la contraseña de un usuario que esté en `admin_users`.
-3. En modo edición puedes:
-   - **Añadir mes**: título (ej. "Agosto 2026"), orden y un resumen opcional.
-   - **Editar un mes**: pulsa el lápiz (✎) junto a la pestaña del mes — cambia título, orden o resumen.
-   - **Eliminar un mes**: solo si no tiene tareas asociadas (si tiene, la app avisa y hay que mover o borrar antes las tareas; la base de datos lo bloquea igualmente).
-   - **Nueva tarea**: título, mes, estado, prioridad, área, orden, descripción, detalles/notas y si aparece en el roadmap.
-   - **Editar tarea**: pulsa "Editar" en cualquier tarjeta — mismos campos, incluido mover la tarea a otro mes.
-   - **Eliminar tarea**: pide confirmación antes de borrar.
-   - **Salir**: cierra sesión.
+3. En modo edición aparecen botones contextuales:
+   - **"Añadir mes"** (junto a las pestañas de mes): título (ej. "Agosto 2026"), orden y un resumen opcional.
+   - **Lápiz (✎)** junto a cada pestaña de mes: edita título, orden o resumen; o elimínalo si no tiene tareas asociadas (si tiene, la app avisa y hay que mover o borrar antes las tareas; la base de datos lo bloquea igualmente).
+   - **"Nueva tarea"** (junto al título del mes activo): título, mes, estado, prioridad, área, orden, descripción, detalles/notas y si aparece en el roadmap.
+   - **"Editar"** en cualquier tarjeta o tarjeta del Kanban: mismos campos, incluido mover la tarea a otro mes.
+   - **Eliminar tarea**: dentro del editor, pide confirmación antes de borrar.
+   - El botón de la cabecera cambia a **"Salir"** para cerrar sesión.
 4. Cada acción se guarda automáticamente en Supabase al instante; verás un aviso de confirmación o de error abajo a la derecha. Al recargar la página, los cambios siguen ahí.
 
 Los visitantes sin sesión solo pueden ver, filtrar y buscar: no ven botones de edición y, aunque los forzaran por consola, la base de datos rechaza cualquier escritura que no venga de un usuario en `admin_users` (lo aplica RLS, no el frontend).
@@ -122,20 +123,42 @@ Los visitantes sin sesión solo pueden ver, filtrar y buscar: no ven botones de 
 
 ### Vista mensual (`Timeline`)
 
-Se combinan entre sí (mes + estado + prioridad + área + búsqueda de texto):
+Se combinan entre sí (mes + estado + prioridad + búsqueda de texto):
 
 - **Estado**: Todos / Completado / Progreso / Revisado / Pendiente / Arrastrada.
 - **Prioridad**: Todas / Alta / Media / Baja.
-- **Área**: Todas + las áreas que existan realmente en las tareas de ese mes (el filtro se oculta si ninguna tarea tiene área).
-- **Buscar dentro del mes**: por título, descripción, área, prioridad o estado.
-- **Limpiar filtros**: resetea los cuatro a la vez.
+- **Buscar dentro del mes**: por título, descripción, mes, área, prioridad o estado.
+- **Mostrar completadas**: toggle apagado por defecto — las tareas `Completado` quedan ocultas de la vista mensual y del Kanban hasta que lo actives (o filtres explícitamente por estado `Completado`).
+- **Limpiar filtros**: resetea estado, prioridad y búsqueda.
 
 ### Roadmap
 
-Filtros independientes de la vista mensual, con la misma lógica (estado, prioridad, área, búsqueda y "Limpiar filtros"). Una tarea aparece en el roadmap si:
+Filtros independientes de la vista mensual, con la misma lógica (estado, prioridad, búsqueda y "Limpiar filtros"). Una tarea aparece en el roadmap si:
 
 - tiene `is_roadmap = true` (marcado manualmente desde el editor con el checkbox "Mostrar en el roadmap"), **y**
 - si no se ha elegido un estado concreto en el filtro, además se limita por defecto a estados `Pendiente`, `Arrastrada` o `Progreso` (para no mezclar con tareas ya cerradas). Si filtras por un estado concreto (incluido `Completado` o `Revisado`), se muestran esas exactamente.
+
+## 4.1. Vista Kanban
+
+Sección "Kanban" (enlace en la cabecera), con el mismo mes activo que el Timeline:
+
+- **Por prioridad**: columnas Alta / Media / Baja.
+- **Por estado**: columnas Completado / Progreso / Revisado / Pendiente / Arrastrada.
+- Respeta el toggle **"Mostrar completadas"** (compartido con la vista mensual).
+- Cada tarjeta muestra el badge que no se usa para agrupar (estado si agrupas por prioridad, o viceversa) más el área si la tiene.
+- En modo edición, las tarjetas son clicables y abren el mismo editor de tareas que el resto de la app.
+
+## 4.2. Buzón de propuestas del equipo
+
+Sección "Propuestas" (enlace en la cabecera), pensada para que cualquier compañero reporte fallos o ideas sin necesitar login:
+
+1. **Cualquier visitante** pulsa "Proponer tarea" y rellena título, descripción, la prioridad que él cree que tiene, y opcionalmente su nombre. Al enviarla, se guarda directamente en Supabase — el visitante no vuelve a verla (no es un tablón público, es un buzón de un solo sentido).
+2. **Solo el admin** ve la lista de propuestas pendientes (sección visible únicamente en modo edición), con fecha de envío, quién la mandó (si lo indicó) y su prioridad sugerida.
+3. Por cada propuesta, el admin puede:
+   - **"Aceptar y publicar"**: abre el editor de tareas normal, precargado con el título, la descripción y la prioridad de la propuesta. El admin completa mes, estado, área, etc. y guarda — se crea como tarea real y la propuesta original se borra automáticamente.
+   - **"Descartar"**: pide confirmación y la borra sin crear ninguna tarea.
+
+Nada de una propuesta llega al log real hasta que el admin la acepta explícitamente.
 
 ## 5. Si Supabase no está configurado
 
