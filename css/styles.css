@@ -88,7 +88,12 @@ button { cursor: pointer; }
   font-size: 14px;
 }
 .top-nav a:hover, .theme-toggle:hover { background: var(--primary-soft); color: var(--text); border-color: rgba(255,127,64,.18); }
-.theme-toggle { width: 42px; height: 42px; display: grid; place-items: center; }
+.theme-toggle { width: 42px; height: 42px; display: grid; place-items: center; font-size: 16px; }
+#authToggleBtn.active {
+  background: var(--primary-soft);
+  border-color: rgba(255,127,64,.35);
+  color: var(--primary-dark);
+}
 .header-actions { display: flex; align-items: center; gap: 10px; }
 
 .nav-toggle {

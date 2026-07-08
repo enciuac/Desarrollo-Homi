@@ -607,7 +607,13 @@ async function handleProposalSubmit(event) {
 
 function updateAdminVisibility() {
   const authBtn = document.getElementById('authToggleBtn');
-  if (authBtn) authBtn.textContent = state.isAdmin ? 'Salir' : 'Acceso privado';
+  if (authBtn) {
+    const label = state.isAdmin ? 'Salir (modo edición activo)' : 'Acceso privado';
+    authBtn.querySelector('.auth-icon').textContent = state.isAdmin ? '🔓' : '🔑';
+    authBtn.setAttribute('aria-label', label);
+    authBtn.title = label;
+    authBtn.classList.toggle('active', state.isAdmin);
+  }
 
   const addTaskBtn = document.getElementById('addTaskBtn');
   if (addTaskBtn) addTaskBtn.hidden = !state.isAdmin;
