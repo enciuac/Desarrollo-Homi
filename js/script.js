@@ -1,4 +1,5 @@
 const STATUSES = ['Completado', 'Progreso', 'Revisado', 'Pendiente', 'Arrastrada'];
+const PRIORITIES = ['Alta', 'Media', 'Baja'];
 const STATUS_CLASS = {
   Completado: 'green',
   Progreso: 'blue',
@@ -6,18 +7,29 @@ const STATUS_CLASS = {
   Pendiente: 'amber',
   Arrastrada: 'orange'
 };
+const PRIORITY_CLASS = {
+  Alta: 'priority-alta',
+  Media: 'priority-media',
+  Baja: 'priority-baja'
+};
 const ROADMAP_DEFAULT_STATUSES = ['Arrastrada', 'Pendiente', 'Progreso'];
 
 const state = {
   months: [],
   tasks: [],
-  monthTitle: null,
+  activeMonthId: null,
   status: 'Todos',
+  priority: 'Todas',
+  area: 'Todas',
   query: '',
   roadmapExpanded: false,
   roadmapStatus: 'Todos',
+  roadmapPriority: 'Todas',
+  roadmapArea: 'Todas',
+  roadmapQuery: '',
   isAdmin: false,
   editingTaskId: null,
+  editingMonthId: undefined,
   usingFallback: true,
   lastUpdatedLabel: ''
 };
@@ -25,6 +37,11 @@ const state = {
 function statusBadge(status) {
   const klass = STATUS_CLASS[status] || 'neutral';
   return `<span class="badge ${klass}">${status}</span>`;
+}
+
+function priorityBadge(priority) {
+  const klass = PRIORITY_CLASS[priority] || 'neutral';
+  return `<span class="badge ${klass}">${priority}</span>`;
 }
 
 function statCard(label, value, subtext = '') {
@@ -48,19 +65,35 @@ function completionPercent(tasks) {
 }
 
 function normalized(text) {
-  return String(text || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .split('')
+    .filter(ch => {
+      const code = ch.codePointAt(0);
+      return code < 0x300 || code > 0x36f;
+    })
+    .join('');
 }
 
-function tasksForMonth(title) {
-  return state.tasks.filter(task => task.month === title);
+function tasksForMonth(monthId) {
+  return state.tasks.filter(task => task.monthId === monthId);
 }
 
 function getActiveMonth() {
-  return state.months.find(month => month.title === state.monthTitle) || state.months[0] || null;
+  return state.months.find(month => month.id === state.activeMonthId) || state.months[0] || null;
 }
 
 function findTask(taskId) {
   return state.tasks.find(task => task.id === taskId) || null;
+}
+
+function findMonth(monthId) {
+  return state.months.find(month => month.id === monthId) || null;
+}
+
+function distinctAreas(tasks) {
+  return [...new Set(tasks.map(task => task.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 }
 
 // ---------- Carga de datos ----------
@@ -75,7 +108,7 @@ async function loadData() {
       const latest = tasks.reduce((max, task) => (task.updatedAt && task.updatedAt > max ? task.updatedAt : max), '');
       state.lastUpdatedLabel = latest
         ? new Date(latest).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
-        : '—';
+        : 'Sin tareas todavia';
       return;
     } catch (error) {
       console.error('[HOMI] Error cargando datos de Supabase:', error);
@@ -87,10 +120,15 @@ async function loadData() {
 
 function loadFallbackData() {
   state.usingFallback = true;
-  state.months = HOMI_LOG.months.map((month, index) => ({ id: month.id, title: month.name, sortOrder: index }));
+  state.months = HOMI_LOG.months.map((month, index) => ({
+    id: month.id,
+    title: month.name,
+    sortOrder: index,
+    summary: month.summary || ''
+  }));
   state.tasks = HOMI_LOG.months.flatMap(month => month.tasks.map((task, index) => ({
     id: task.id,
-    month: month.name,
+    monthId: month.id,
     title: task.title,
     description: task.description || '',
     details: task.details || [],
@@ -119,46 +157,8 @@ function renderDataSourceBanner() {
   if (!banner || !text) return;
   banner.hidden = !state.usingFallback;
   if (state.usingFallback) {
-    text.textContent = 'Supabase no configurado. Usando datos locales de ejemplo (solo lectura). Configura js/supabase-config.js para activar la edición y el guardado automático.';
+    text.textContent = 'Supabase no configurado. Usando datos locales de ejemplo (solo lectura). Configura js/supabase-config.js para activar la edicion y el guardado automatico.';
   }
-}
-
-function sqlQuote(value) {
-  return `'${String(value ?? '').replace(/'/g, "''")}'`;
-}
-
-function generateSeedSql() {
-  const monthLines = HOMI_LOG.months.map((month, index) => (
-    `insert into public.development_months (title, sort_order) values (${sqlQuote(month.name)}, ${index}) on conflict (title) do nothing;`
-  ));
-
-  const taskLines = HOMI_LOG.months.flatMap((month, mIndex) => month.tasks.map((task, tIndex) => {
-    const details = (task.details || []).join('\n');
-    const isRoadmap = task.status === 'Arrastrada';
-    return `insert into public.development_tasks (month, title, description, details, status, priority, area, is_roadmap, sort_order) values (${sqlQuote(month.name)}, ${sqlQuote(task.title)}, ${sqlQuote(task.description)}, ${sqlQuote(details)}, ${sqlQuote(task.status)}, ${sqlQuote(task.priority || 'Media')}, ${sqlQuote(task.area || '')}, ${isRoadmap}, ${tIndex});`;
-  }));
-
-  const content = [
-    '-- SQL generado desde js/data.js (datos de ejemplo de HOMI Development Log).',
-    '-- Pégalo en Supabase Dashboard > SQL Editor tras crear las tablas con supabase/schema.sql.',
-    '',
-    '-- Meses',
-    ...monthLines,
-    '',
-    '-- Tareas',
-    ...taskLines,
-    ''
-  ].join('\n');
-
-  const blob = new Blob([content], { type: 'application/sql' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'homi-seed-data.sql';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 // ---------- Render: stats, filtros, meses ----------
@@ -178,11 +178,12 @@ function renderGlobalStats() {
 }
 
 function renderFilters() {
-  const statuses = ['Todos', ...STATUSES];
-  document.getElementById('statusFilters').innerHTML = statuses.map(status => (
+  const month = getActiveMonth();
+  const monthTasks = month ? tasksForMonth(month.id) : [];
+
+  document.getElementById('statusFilters').innerHTML = ['Todos', ...STATUSES].map(status => (
     `<button class="filter-btn ${state.status === status ? 'active' : ''}" data-status="${status}" type="button">${status}</button>`
   )).join('');
-
   document.querySelectorAll('[data-status]').forEach(button => {
     button.addEventListener('click', () => {
       state.status = button.dataset.status;
@@ -190,16 +191,39 @@ function renderFilters() {
       renderFilters();
     });
   });
+
+  document.getElementById('priorityFilters').innerHTML = ['Todas', ...PRIORITIES].map(priority => (
+    `<button class="filter-btn ${state.priority === priority ? 'active' : ''}" data-priority="${priority}" type="button">${priority}</button>`
+  )).join('');
+  document.querySelectorAll('[data-priority]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.priority = button.dataset.priority;
+      renderTasks();
+      renderFilters();
+    });
+  });
+
+  const areas = distinctAreas(monthTasks);
+  const areaGroup = document.getElementById('areaFilterGroup');
+  areaGroup.hidden = areas.length === 0;
+  if (areas.length) {
+    document.getElementById('areaFilters').innerHTML = ['Todas', ...areas].map(area => (
+      `<button class="filter-btn ${state.area === area ? 'active' : ''}" data-area="${area}" type="button">${area}</button>`
+    )).join('');
+    document.querySelectorAll('[data-area]').forEach(button => {
+      button.addEventListener('click', () => {
+        state.area = button.dataset.area;
+        renderTasks();
+        renderFilters();
+      });
+    });
+  }
 }
 
 function renderRoadmapFilters() {
-  const statuses = ['Todos', ...STATUSES];
-  const holder = document.getElementById('roadmapFilters');
-  if (!holder) return;
-  holder.innerHTML = statuses.map(status => (
+  document.getElementById('roadmapFilters').innerHTML = ['Todos', ...STATUSES].map(status => (
     `<button class="filter-btn ${state.roadmapStatus === status ? 'active' : ''}" data-roadmap-status="${status}" type="button">${status}</button>`
   )).join('');
-
   document.querySelectorAll('[data-roadmap-status]').forEach(button => {
     button.addEventListener('click', () => {
       state.roadmapStatus = button.dataset.roadmapStatus;
@@ -208,33 +232,81 @@ function renderRoadmapFilters() {
       renderRoadmapFilters();
     });
   });
+
+  document.getElementById('roadmapPriorityFilters').innerHTML = ['Todas', ...PRIORITIES].map(priority => (
+    `<button class="filter-btn ${state.roadmapPriority === priority ? 'active' : ''}" data-roadmap-priority="${priority}" type="button">${priority}</button>`
+  )).join('');
+  document.querySelectorAll('[data-roadmap-priority]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.roadmapPriority = button.dataset.roadmapPriority;
+      state.roadmapExpanded = true;
+      renderRoadmap();
+      renderRoadmapFilters();
+    });
+  });
+
+  const areas = distinctAreas(roadmapBaseTasks());
+  const areaGroup = document.getElementById('roadmapAreaFilterGroup');
+  areaGroup.hidden = areas.length === 0;
+  if (areas.length) {
+    document.getElementById('roadmapAreaFilters').innerHTML = ['Todas', ...areas].map(area => (
+      `<button class="filter-btn ${state.roadmapArea === area ? 'active' : ''}" data-roadmap-area="${area}" type="button">${area}</button>`
+    )).join('');
+    document.querySelectorAll('[data-roadmap-area]').forEach(button => {
+      button.addEventListener('click', () => {
+        state.roadmapArea = button.dataset.roadmapArea;
+        state.roadmapExpanded = true;
+        renderRoadmap();
+        renderRoadmapFilters();
+      });
+    });
+  }
 }
 
 function renderMonthTabs() {
+  const container = document.getElementById('monthTabs');
   const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
-  document.getElementById('monthTabs').innerHTML = sorted.map(month => (
-    `<button class="month-tab ${state.monthTitle === month.title ? 'active' : ''}" type="button" data-month="${month.title}">${month.title}</button>`
-  )).join('');
 
-  document.querySelectorAll('[data-month]').forEach(button => {
+  if (!sorted.length) {
+    container.innerHTML = '<span class="month-tabs-empty">Todavia no hay meses. Crea el primero con "Anadir mes".</span>';
+    return;
+  }
+
+  container.innerHTML = sorted.map(month => `
+    <span class="month-tab-group">
+      <button class="month-tab ${state.activeMonthId === month.id ? 'active' : ''}" type="button" data-month-id="${month.id}">${month.title}</button>
+      ${state.isAdmin ? `<button class="month-tab-edit" type="button" data-edit-month="${month.id}" aria-label="Editar mes ${month.title}">&#9998;</button>` : ''}
+    </span>
+  `).join('');
+
+  container.querySelectorAll('[data-month-id]').forEach(button => {
     button.addEventListener('click', () => {
-      state.monthTitle = button.dataset.month;
+      state.activeMonthId = button.dataset.monthId;
       state.status = 'Todos';
+      state.priority = 'Todas';
+      state.area = 'Todas';
       state.query = '';
       const search = document.getElementById('searchInput');
       if (search) search.value = '';
       render();
     });
   });
+
+  container.querySelectorAll('[data-edit-month]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      openMonthEditor(button.dataset.editMonth);
+    });
+  });
 }
 
 function renderActiveMonth() {
   const month = getActiveMonth();
-  const tasks = month ? tasksForMonth(month.title) : [];
+  const tasks = month ? tasksForMonth(month.id) : [];
   const counts = countByStatus(tasks);
   const percent = completionPercent(tasks);
 
-  document.getElementById('activeMonthTitle').textContent = month ? month.title : 'Sin meses todavía';
+  document.getElementById('activeMonthTitle').textContent = month ? month.title : 'Sin meses todavia';
 
   document.getElementById('monthStats').innerHTML = [
     statCard('Avance', `${percent}%`),
@@ -248,13 +320,15 @@ function renderActiveMonth() {
 
 // ---------- Render: tarjetas ----------
 
-function filteredTasks(tasks) {
-  const query = normalized(state.query);
+function filteredTasks(tasks, filters) {
+  const query = normalized(filters.query);
   return tasks.filter(task => {
-    const matchesStatus = state.status === 'Todos' || task.status === state.status;
+    const matchesStatus = filters.status === 'Todos' || task.status === filters.status;
+    const matchesPriority = filters.priority === 'Todas' || task.priority === filters.priority;
+    const matchesArea = filters.area === 'Todas' || task.area === filters.area;
     const haystack = normalized([task.title, task.description, task.area, task.priority, task.status].join(' '));
     const matchesQuery = !query || haystack.includes(query);
-    return matchesStatus && matchesQuery;
+    return matchesStatus && matchesPriority && matchesArea && matchesQuery;
   }).sort((a, b) => {
     if (a.status === 'Arrastrada' && b.status !== 'Arrastrada') return -1;
     if (a.status !== 'Arrastrada' && b.status === 'Arrastrada') return 1;
@@ -267,9 +341,10 @@ function taskCard(task, isRoadmap = false) {
     ? `<button class="edit-task-btn" type="button" data-edit-task="${task.id}">Editar</button>`
     : '';
   const metaBadges = [
-    task.priority ? `<span class="badge neutral">${task.priority}</span>` : '',
+    task.priority ? priorityBadge(task.priority) : '',
     task.area ? `<span class="badge neutral">${task.area}</span>` : ''
   ].join('');
+  const month = isRoadmap ? findMonth(task.monthId) : null;
 
   return `
     <article class="${isRoadmap ? 'roadmap-card' : 'task-card'}" ${isRoadmap ? '' : 'data-task-card'}>
@@ -280,7 +355,7 @@ function taskCard(task, isRoadmap = false) {
         </div>
         <h3>${task.title}</h3>
         ${task.description ? `<p>${task.description}</p>` : ''}
-        ${isRoadmap ? `<div class="task-footer"><span>${task.month}</span></div>` : ''}
+        ${isRoadmap && month ? `<div class="task-footer"><span>${month.title}</span></div>` : ''}
       </button>
       ${!isRoadmap && task.details.length ? `<div class="task-details"><div class="task-details-inner"><ul>${task.details.map(item => `<li>${item}</li>`).join('')}</ul></div></div>` : ''}
       ${editButton}
@@ -290,7 +365,9 @@ function taskCard(task, isRoadmap = false) {
 
 function renderTasks() {
   const month = getActiveMonth();
-  const tasks = month ? filteredTasks(tasksForMonth(month.title)) : [];
+  const tasks = month
+    ? filteredTasks(tasksForMonth(month.id), { status: state.status, priority: state.priority, area: state.area, query: state.query })
+    : [];
   const list = document.getElementById('taskList');
   const empty = document.getElementById('emptyState');
 
@@ -322,13 +399,16 @@ function roadmapBaseTasks() {
 
 function renderRoadmap() {
   let tasks = roadmapBaseTasks();
-  if (state.roadmapStatus !== 'Todos') {
-    tasks = tasks.filter(task => task.status === state.roadmapStatus);
-  } else {
+  if (state.roadmapStatus === 'Todos') {
     tasks = tasks.filter(task => ROADMAP_DEFAULT_STATUSES.includes(task.status));
   }
+  tasks = filteredTasks(tasks, {
+    status: state.roadmapStatus,
+    priority: state.roadmapPriority,
+    area: state.roadmapArea,
+    query: state.roadmapQuery
+  });
 
-  tasks = tasks.sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
   const visible = state.roadmapExpanded ? tasks : tasks.slice(0, 9);
   document.getElementById('roadmapList').innerHTML = visible.map(task => taskCard(task, true)).join('');
   document.getElementById('showAllRoadmap').textContent = state.roadmapExpanded ? 'Ver menos' : `Ver todas (${tasks.length})`;
@@ -346,7 +426,7 @@ function renderAdminBar() {
       <span>Modo edición activo</span>
       <span>
         <button id="addTaskBtn" class="secondary-btn small" type="button">Nueva tarea</button>
-        <button id="addMonthBtn" class="secondary-btn small" type="button">Nuevo mes</button>
+        <button id="addMonthBtn" class="secondary-btn small" type="button">Añadir mes</button>
         <button id="logoutBtn" class="secondary-btn small" type="button">Salir</button>
       </span>`;
   } else {
@@ -367,28 +447,7 @@ function renderAdminBar() {
   if (addTaskBtn) addTaskBtn.addEventListener('click', () => openEditor(null));
 
   const addMonthBtn = document.getElementById('addMonthBtn');
-  if (addMonthBtn) addMonthBtn.addEventListener('click', addMonth);
-}
-
-async function addMonth() {
-  const title = prompt('Nombre del nuevo mes (ej. Agosto 2026):');
-  if (!title || !title.trim()) return;
-  const trimmed = title.trim();
-  if (state.months.some(month => month.title.toLowerCase() === trimmed.toLowerCase())) {
-    showToast('Ese mes ya existe.', 'error');
-    return;
-  }
-  const sortOrder = state.months.length ? Math.max(...state.months.map(m => m.sortOrder)) + 1 : 0;
-  try {
-    const created = await HomiSupabase.insertMonth(trimmed, sortOrder);
-    state.months.push(created);
-    state.monthTitle = created.title;
-    showToast('Mes creado correctamente.', 'success');
-    render();
-  } catch (error) {
-    console.error(error);
-    showToast('Error al crear el mes: ' + (error.message || error), 'error');
-  }
+  if (addMonthBtn) addMonthBtn.addEventListener('click', () => openMonthEditor(null));
 }
 
 function openLogin() {
@@ -440,10 +499,133 @@ async function handleLoginSubmit(event) {
   }
 }
 
+// ---------- Editor de meses ----------
+
+function openMonthEditor(monthId) {
+  if (!state.isAdmin) return;
+  state.editingMonthId = monthId;
+  const modal = document.getElementById('monthModal');
+  const title = document.getElementById('monthEditorTitle');
+  document.getElementById('monthFormError').textContent = '';
+
+  if (monthId) {
+    const month = findMonth(monthId);
+    if (!month) return;
+    title.textContent = 'Editar mes';
+    document.getElementById('editMonthTitle').value = month.title;
+    document.getElementById('editMonthSortOrder').value = month.sortOrder;
+    document.getElementById('editMonthSummary').value = month.summary || '';
+    document.getElementById('deleteMonthBtn').hidden = false;
+  } else {
+    title.textContent = 'Nuevo mes';
+    document.getElementById('editMonthTitle').value = '';
+    const maxOrder = state.months.length ? Math.max(...state.months.map(month => month.sortOrder)) + 1 : 0;
+    document.getElementById('editMonthSortOrder').value = maxOrder;
+    document.getElementById('editMonthSummary').value = '';
+    document.getElementById('deleteMonthBtn').hidden = true;
+  }
+
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeMonthEditor() {
+  const modal = document.getElementById('monthModal');
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  state.editingMonthId = undefined;
+}
+
+async function saveMonthEditor(event) {
+  event.preventDefault();
+  const errorEl = document.getElementById('monthFormError');
+  errorEl.textContent = '';
+
+  if (!window.HomiSupabase || !HomiSupabase.isConfigured) {
+    showToast('Configura Supabase para poder guardar cambios.', 'error');
+    return;
+  }
+
+  const payload = {
+    title: document.getElementById('editMonthTitle').value.trim(),
+    sortOrder: Number(document.getElementById('editMonthSortOrder').value) || 0,
+    summary: document.getElementById('editMonthSummary').value.trim()
+  };
+
+  if (!payload.title) {
+    errorEl.textContent = 'El mes necesita un título.';
+    return;
+  }
+  const duplicate = state.months.some(month => (
+    month.title.toLowerCase() === payload.title.toLowerCase() && month.id !== state.editingMonthId
+  ));
+  if (duplicate) {
+    errorEl.textContent = 'Ya existe un mes con ese título.';
+    return;
+  }
+
+  const submitBtn = event.target.querySelector('[type="submit"]');
+  submitBtn.disabled = true;
+
+  try {
+    const wasEditing = !!state.editingMonthId;
+    if (wasEditing) {
+      const updated = await HomiSupabase.updateMonth(state.editingMonthId, payload);
+      const index = state.months.findIndex(month => month.id === state.editingMonthId);
+      if (index !== -1) state.months[index] = updated;
+    } else {
+      const created = await HomiSupabase.insertMonth(payload);
+      state.months.push(created);
+      state.activeMonthId = created.id;
+    }
+    closeMonthEditor();
+    showToast(wasEditing ? 'Mes actualizado correctamente.' : 'Mes creado correctamente.', 'success');
+    render();
+  } catch (error) {
+    console.error(error);
+    errorEl.textContent = 'Error al guardar: ' + (error.message || error);
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+async function deleteMonthEditor() {
+  if (!state.editingMonthId) return closeMonthEditor();
+
+  if (tasksForMonth(state.editingMonthId).length > 0) {
+    showToast('No puedes eliminar este mes porque tiene tareas asociadas. Mueve o elimina primero esas tareas.', 'error');
+    return;
+  }
+  if (!confirm('¿Seguro que quieres eliminar este mes? Esta acción no se puede deshacer.')) return;
+
+  try {
+    await HomiSupabase.deleteMonth(state.editingMonthId);
+    state.months = state.months.filter(month => month.id !== state.editingMonthId);
+    if (state.activeMonthId === state.editingMonthId) {
+      const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
+      state.activeMonthId = sorted.length ? sorted[sorted.length - 1].id : null;
+    }
+    closeMonthEditor();
+    showToast('Mes eliminado.', 'success');
+    render();
+  } catch (error) {
+    console.error(error);
+    const message = error.code === '23503'
+      ? 'No puedes eliminar este mes porque tiene tareas asociadas. Mueve o elimina primero esas tareas.'
+      : 'Error al eliminar el mes: ' + (error.message || error);
+    showToast(message, 'error');
+  }
+}
+
 // ---------- Editor de tareas ----------
 
 function openEditor(taskId) {
   if (!state.isAdmin) return;
+  if (!taskId && !state.months.length) {
+    showToast('Crea primero un mes antes de añadir tareas.', 'error');
+    return;
+  }
+
   state.editingTaskId = taskId;
   const modal = document.getElementById('editorModal');
   const title = document.getElementById('editorTitle');
@@ -451,7 +633,7 @@ function openEditor(taskId) {
   const statusSelect = document.getElementById('editStatus');
 
   const sortedMonths = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
-  monthSelect.innerHTML = sortedMonths.map(month => `<option value="${month.title}">${month.title}</option>`).join('');
+  monthSelect.innerHTML = sortedMonths.map(month => `<option value="${month.id}">${month.title}</option>`).join('');
   statusSelect.innerHTML = STATUSES.map(status => `<option value="${status}">${status}</option>`).join('');
 
   if (taskId) {
@@ -460,20 +642,23 @@ function openEditor(taskId) {
     title.textContent = 'Editar tarea';
     document.getElementById('editTaskTitle').value = task.title || '';
     document.getElementById('editStatus').value = task.status || 'Pendiente';
-    document.getElementById('editMonth').value = task.month;
+    document.getElementById('editMonth').value = task.monthId;
     document.getElementById('editPriority').value = task.priority || 'Media';
     document.getElementById('editArea').value = task.area || '';
+    document.getElementById('editSortOrder').value = task.sortOrder ?? 0;
     document.getElementById('editDescription').value = task.description || '';
     document.getElementById('editDetails').value = (task.details || []).join('\n');
     document.getElementById('editIsRoadmap').checked = !!task.isRoadmap;
     document.getElementById('deleteTaskBtn').hidden = false;
   } else {
+    const defaultMonthId = state.activeMonthId || (sortedMonths[0] && sortedMonths[0].id) || '';
     title.textContent = 'Nueva tarea';
     document.getElementById('editTaskTitle').value = '';
     document.getElementById('editStatus').value = 'Pendiente';
-    document.getElementById('editMonth').value = state.monthTitle || (sortedMonths[0] && sortedMonths[0].title) || '';
+    document.getElementById('editMonth').value = defaultMonthId;
     document.getElementById('editPriority').value = 'Media';
     document.getElementById('editArea').value = '';
+    document.getElementById('editSortOrder').value = tasksForMonth(defaultMonthId).length;
     document.getElementById('editDescription').value = '';
     document.getElementById('editDetails').value = '';
     document.getElementById('editIsRoadmap').checked = false;
@@ -499,13 +684,14 @@ async function saveEditor(event) {
     return;
   }
 
-  const monthTitle = document.getElementById('editMonth').value;
+  const monthId = document.getElementById('editMonth').value;
   const payload = {
-    month: monthTitle,
+    monthId,
     title: document.getElementById('editTaskTitle').value.trim(),
     status: document.getElementById('editStatus').value,
     priority: document.getElementById('editPriority').value,
     area: document.getElementById('editArea').value.trim(),
+    sortOrder: Number(document.getElementById('editSortOrder').value) || 0,
     description: document.getElementById('editDescription').value.trim(),
     details: document.getElementById('editDetails').value.split('\n').map(item => item.trim()).filter(Boolean),
     isRoadmap: document.getElementById('editIsRoadmap').checked
@@ -515,23 +701,27 @@ async function saveEditor(event) {
     alert('La tarea necesita un título.');
     return;
   }
+  if (!payload.monthId) {
+    alert('Selecciona un mes para la tarea.');
+    return;
+  }
 
   const submitBtn = event.target.querySelector('[type="submit"]');
   submitBtn.disabled = true;
 
   try {
-    if (state.editingTaskId) {
+    const wasEditing = !!state.editingTaskId;
+    if (wasEditing) {
       const updated = await HomiSupabase.updateTask(state.editingTaskId, payload);
       const index = state.tasks.findIndex(task => task.id === state.editingTaskId);
       if (index !== -1) state.tasks[index] = updated;
     } else {
-      payload.sortOrder = tasksForMonth(monthTitle).length;
       const created = await HomiSupabase.insertTask(payload);
       state.tasks.push(created);
     }
-    state.monthTitle = monthTitle;
+    state.activeMonthId = monthId;
     closeEditor();
-    showToast('Tarea guardada correctamente.', 'success');
+    showToast(wasEditing ? 'Tarea actualizada correctamente.' : 'Tarea creada correctamente.', 'success');
     render();
   } catch (error) {
     console.error(error);
@@ -543,7 +733,7 @@ async function saveEditor(event) {
 
 async function deleteEditorTask() {
   if (!state.editingTaskId) return closeEditor();
-  if (!confirm('¿Quieres eliminar esta tarea? Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Seguro que quieres eliminar esta tarea? Esta acción no se puede deshacer.')) return;
 
   try {
     await HomiSupabase.deleteTask(state.editingTaskId);
@@ -576,6 +766,28 @@ function bindEvents() {
     state.query = event.target.value;
     renderTasks();
   });
+  document.getElementById('roadmapSearchInput').addEventListener('input', event => {
+    state.roadmapQuery = event.target.value;
+    renderRoadmap();
+  });
+  document.getElementById('clearMonthFiltersBtn').addEventListener('click', () => {
+    state.status = 'Todos';
+    state.priority = 'Todas';
+    state.area = 'Todas';
+    state.query = '';
+    document.getElementById('searchInput').value = '';
+    renderFilters();
+    renderTasks();
+  });
+  document.getElementById('clearRoadmapFiltersBtn').addEventListener('click', () => {
+    state.roadmapStatus = 'Todos';
+    state.roadmapPriority = 'Todas';
+    state.roadmapArea = 'Todas';
+    state.roadmapQuery = '';
+    document.getElementById('roadmapSearchInput').value = '';
+    renderRoadmapFilters();
+    renderRoadmap();
+  });
   document.getElementById('themeToggle').addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
@@ -586,7 +798,6 @@ function bindEvents() {
     state.roadmapExpanded = !state.roadmapExpanded;
     renderRoadmap();
   });
-  document.getElementById('exportSeedSqlBtn').addEventListener('click', generateSeedSql);
 
   document.getElementById('loginForm').addEventListener('submit', handleLoginSubmit);
 
@@ -594,11 +805,15 @@ function bindEvents() {
     button.addEventListener('click', () => {
       closeLogin();
       closeEditor();
+      closeMonthEditor();
     });
   });
 
   document.getElementById('editorForm').addEventListener('submit', saveEditor);
   document.getElementById('deleteTaskBtn').addEventListener('click', deleteEditorTask);
+
+  document.getElementById('monthForm').addEventListener('submit', saveMonthEditor);
+  document.getElementById('deleteMonthBtn').addEventListener('click', deleteMonthEditor);
 }
 
 // ---------- Render principal ----------
@@ -622,9 +837,9 @@ async function init() {
   bindEvents();
   await loadData();
 
-  if (!state.monthTitle && state.months.length) {
+  if (!state.activeMonthId && state.months.length) {
     const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
-    state.monthTitle = sorted[sorted.length - 1].title;
+    state.activeMonthId = sorted[sorted.length - 1].id;
   }
 
   renderProjectHeader();
@@ -638,9 +853,7 @@ async function init() {
     }
     HomiSupabase.onAuthStateChange(async session => {
       state.isAdmin = session ? await HomiSupabase.isAdminEmail(session.user.email) : false;
-      renderAdminBar();
-      renderTasks();
-      renderRoadmap();
+      render();
     });
   }
 }

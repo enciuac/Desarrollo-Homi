@@ -170,7 +170,8 @@ button { cursor: pointer; }
 
 .controls-section { margin: 28px 0 18px; }
 .task-controls { margin-top: 8px; }
-.controls-card { border-radius: var(--radius-xl); padding: 16px; display: grid; grid-template-columns: minmax(260px, 1fr) 2fr; gap: 18px; align-items: end; }
+.controls-card { border-radius: var(--radius-xl); padding: 18px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 18px; align-items: start; }
+.filters-footer { display: flex; justify-content: flex-end; }
 .search-box { display: grid; gap: 8px; }
 .search-box span { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 800; }
 .search-box input {
@@ -196,6 +197,18 @@ button { cursor: pointer; }
 .filter-btn.active, .month-tab.active { color: white; border-color: transparent; background: linear-gradient(135deg, var(--primary), #ff9c66); box-shadow: 0 10px 24px rgba(255,127,64,.22); }
 .month-tabs { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0 16px; }
 .month-tab { min-width: max-content; }
+.month-tab-group { display: inline-flex; align-items: center; gap: 4px; min-width: max-content; }
+.month-tab-edit {
+  width: 34px; height: 34px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card-solid);
+  color: var(--muted);
+  font-size: 13px;
+  flex: none;
+}
+.month-tab-edit:hover { background: var(--primary-soft); color: var(--primary-dark); }
+.month-tabs-empty { color: var(--muted); font-size: 14px; font-weight: 700; padding: 10px 0; }
 
 
 .task-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -210,6 +223,9 @@ button { cursor: pointer; }
 .badge.amber { color: var(--amber); background: var(--amber-soft); }
 .badge.orange { color: var(--orange); background: var(--orange-soft); }
 .badge.neutral { color: var(--muted); background: rgba(105,115,134,.12); }
+.badge.priority-alta { color: #c0311a; background: rgba(224,62,32,.13); }
+.badge.priority-media { color: var(--amber); background: var(--amber-soft); }
+.badge.priority-baja { color: var(--green); background: var(--green-soft); }
 .task-card h3 { margin: 0 0 10px; font-size: 20px; letter-spacing: -.025em; }
 .task-card p { margin: 0; color: var(--muted); line-height: 1.62; }
 .task-footer { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; color: var(--muted); font-size: 13px; font-weight: 700; }
@@ -230,7 +246,7 @@ button { cursor: pointer; }
 @media (max-width: 980px) {
   .hero-section { grid-template-columns: 1fr; }
   .stats-grid, .stats-grid.compact { grid-template-columns: repeat(2, 1fr); }
-  .controls-card { grid-template-columns: 1fr; }
+  .controls-card, .roadmap-controls { grid-template-columns: 1fr 1fr; }
   .task-list, .roadmap-list { grid-template-columns: 1fr; }
   .split-heading { align-items: start; flex-direction: column; }
 }
@@ -241,6 +257,7 @@ button { cursor: pointer; }
   .hero-copy, .hero-panel { border-radius: 24px; padding: 24px; }
   .hero-copy h1 { font-size: 42px; }
   .stats-grid, .stats-grid.compact { grid-template-columns: 1fr; }
+  .controls-card, .roadmap-controls { grid-template-columns: 1fr; }
   .footer { flex-direction: column; }
 }
 
@@ -267,13 +284,14 @@ button { cursor: pointer; }
 .admin-bar button { margin-left: 6px; }
 .secondary-btn.danger { color: #b42318; border-color: rgba(180,35,24,.2); background: rgba(244,63,94,.08); }
 .roadmap-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 18px;
+  align-items: start;
   margin: -4px 0 18px;
-  padding: 14px 16px;
+  padding: 18px;
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   background: var(--card);
   box-shadow: 0 10px 28px rgba(23,32,51,.06);
 }
@@ -367,6 +385,7 @@ button { cursor: pointer; }
   .modal-card h2 { font-size: 28px; }
 }
 
+.data-source-banner[hidden] { display: none; }
 .data-source-banner {
   display: flex;
   flex-wrap: wrap;

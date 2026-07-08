@@ -1,8 +1,8 @@
 # HOMI Development Log
 
-Página estática (GitHub Pages) con estilo SaaS + identidad HOMI para llevar el registro visual de desarrollo del producto: tareas por mes, estados, roadmap y modo edición.
+App interna (GitHub Pages) con estilo SaaS + identidad HOMI para llevar el registro de desarrollo del producto: meses, tareas, estados, prioridades, áreas, roadmap y modo edición.
 
-La persistencia real es **Supabase** (Postgres + Auth + RLS). `js/data.js` solo se usa como **dato de ejemplo de solo lectura** cuando Supabase todavía no está configurado — no es el sistema de guardado.
+La persistencia real es **Supabase** (Postgres + Auth + RLS). `js/data.js` solo se usa como **dato de ejemplo de solo lectura** cuando Supabase todavía no está configurado — no es el sistema de guardado. No existe edición basada en `localStorage`.
 
 ## Estructura de carpetas
 
@@ -27,10 +27,11 @@ homi-development-log/
 │   ├── supabase-client.js   # capa de acceso a datos y auth
 │   └── script.js            # UI: render, filtros, editor, login
 └── supabase/
-    └── schema.sql           # tablas + RLS + policies listas para pegar
+    ├── schema.sql             # tablas + constraints + RLS + policies (idempotente)
+    └── seed-example-data.sql  # opcional: inserta las tareas de ejemplo como datos reales
 ```
 
-## 1. Subir a GitHub Pages
+## 1. Desplegar en GitHub Pages
 
 1. Sube todo el contenido de esta carpeta a un repositorio de GitHub.
 2. En el repo: `Settings > Pages`.
@@ -48,20 +49,28 @@ No hace falta build ni bundler: es HTML/CSS/JS plano.
    - **Project URL**
    - **anon public key** (⚠️ nunca la `service_role key`)
 
-### 2.2. Crear las tablas, RLS y policies
+### 2.2. Crear las tablas, constraints, RLS y policies
 
 1. Ve a `SQL Editor > New query`.
-2. Pega y ejecuta el contenido de [`supabase/schema.sql`](supabase/schema.sql). Crea:
-   - `development_months` (id, title, sort_order, created_at)
-   - `development_tasks` (id, month, title, description, details, status, priority, area, is_roadmap, sort_order, created_at, updated_at)
-   - `admin_users` (email) — lista blanca de quién puede editar
-   - Row Level Security activado en las tres tablas
-   - Políticas:
-     - **Lectura pública** de meses y tareas (cualquier visitante, sin login).
-     - **Escritura (insert/update/delete)** solo si el usuario está autenticado **y** su email aparece en `admin_users`.
-     - Un usuario autenticado solo puede leer su propia fila de `admin_users` (para que el frontend sepa si debe mostrar el modo edición), nunca la lista completa.
+2. Pega y ejecuta el contenido completo de [`supabase/schema.sql`](supabase/schema.sql).
 
-La seguridad depende de estas políticas, **no** de ocultar la `anon key` (esa clave está pensada para ser pública).
+Es **seguro volver a pegarlo y ejecutarlo** aunque ya tengas datos: usa `create table if not exists` y bloques `do $$ ... $$` que comprueban si algo existe antes de crearlo, así que sirve tanto para instalar desde cero como para migrar una instalación anterior sin perder filas.
+
+Crea:
+
+- **`development_months`**: `id uuid`, `title text unique`, `sort_order integer`, `summary text`, `created_at`, `updated_at`.
+- **`development_tasks`**: `id uuid`, `month_id uuid` (referencia a `development_months.id`, `on delete restrict`), `title`, `description`, `details`, `status`, `priority`, `area`, `is_roadmap boolean`, `sort_order`, `created_at`, `updated_at`.
+- **`admin_users`** (`email`): lista blanca de quién puede editar.
+- **Constraints**: `status` solo admite `Completado | Progreso | Revisado | Pendiente | Arrastrada`; `priority` solo admite `Alta | Media | Baja` (o vacío).
+- **`on delete restrict`** en `month_id`: Postgres bloquea a nivel de base de datos borrar un mes que todavía tiene tareas asociadas, aunque alguien se salte el frontend.
+- **Row Level Security** activado en las tres tablas, con estas políticas:
+  - **Lectura pública** de meses y tareas (cualquier visitante, sin login).
+  - **Escritura (insert/update/delete)** solo si el usuario está autenticado **y** su email aparece en `admin_users`.
+  - Un usuario autenticado solo puede leer su propia fila de `admin_users` (para que el frontend sepa si debe mostrar el modo edición), nunca la lista completa.
+
+La seguridad depende de estas políticas, **no** de ocultar botones en el frontend ni la `anon key` (esa clave está pensada para ser pública).
+
+> Si ya tenías una versión anterior de la tabla `development_tasks` con una columna `month` de texto (en vez de `month_id`), el script migra solas las filas: crea los meses que falten, enlaza cada tarea por título y borra la columna `month` antigua.
 
 ### 2.3. Crear tu usuario admin
 
@@ -85,38 +94,48 @@ window.HOMI_SUPABASE_CONFIG = {
 };
 ```
 
-Sube el cambio a GitHub Pages. En cuanto estos valores dejen de ser los de ejemplo, la página empieza a leer y guardar directamente en Supabase.
+Sube el cambio a GitHub. En cuanto estos valores dejen de ser los de ejemplo, la página empieza a leer y guardar directamente en Supabase.
 
-### 2.5. (Opcional) Migrar los datos de ejemplo a Supabase
+### 2.5. (Opcional) Sembrar los datos de ejemplo
 
-Si quieres partir de las ~85 tareas ya cargadas en `js/data.js` en vez de escribir todo de cero:
+Si quieres partir de las ~85 tareas de ejemplo (Mayo/Junio/Julio 2026) como datos reales en vez de una tabla vacía: pega y ejecuta una vez el contenido de [`supabase/seed-example-data.sql`](supabase/seed-example-data.sql) en el `SQL Editor`, **después** de haber ejecutado `schema.sql`.
 
-1. Abre la página **sin** Supabase configurado (o con el banner de aviso visible).
-2. Pulsa **"Descargar SQL de estos datos"** en el aviso superior. Genera un `homi-seed-data.sql` con `insert` para meses y tareas.
-3. Pégalo en `SQL Editor` de Supabase y ejecútalo (una sola vez).
-
-Esto es una migración puntual, no un mecanismo recurrente: a partir de ahí, todos los cambios se hacen desde el modo edición y se guardan solos.
+Esto es una migración puntual (no hay ningún botón en la web para generarlo, a propósito). Si no lo ejecutas, la app arranca con Supabase vacío y vas añadiendo meses y tareas tú mismo desde el modo edición.
 
 ## 3. Cómo usar el modo edición
 
 1. Con Supabase ya configurado, pulsa **"Acceso privado"** en la barra superior.
 2. Introduce el email y la contraseña de un usuario que esté en `admin_users`.
 3. En modo edición puedes:
-   - Pulsar **"Editar"** en cualquier tarjeta: cambiar título, descripción, detalles, estado, prioridad, área, mes, o marcarla/desmarcarla para el roadmap.
-   - Pulsar **"Eliminar"** dentro del editor (pide confirmación).
-   - Pulsar **"Nueva tarea"** para crear una tarea desde cero.
-   - Pulsar **"Nuevo mes"** para añadir un mes nuevo (ej. "Agosto 2026") al selector.
-   - Pulsar **"Salir"** para cerrar sesión.
+   - **Añadir mes**: título (ej. "Agosto 2026"), orden y un resumen opcional.
+   - **Editar un mes**: pulsa el lápiz (✎) junto a la pestaña del mes — cambia título, orden o resumen.
+   - **Eliminar un mes**: solo si no tiene tareas asociadas (si tiene, la app avisa y hay que mover o borrar antes las tareas; la base de datos lo bloquea igualmente).
+   - **Nueva tarea**: título, mes, estado, prioridad, área, orden, descripción, detalles/notas y si aparece en el roadmap.
+   - **Editar tarea**: pulsa "Editar" en cualquier tarjeta — mismos campos, incluido mover la tarea a otro mes.
+   - **Eliminar tarea**: pide confirmación antes de borrar.
+   - **Salir**: cierra sesión.
 4. Cada acción se guarda automáticamente en Supabase al instante; verás un aviso de confirmación o de error abajo a la derecha. Al recargar la página, los cambios siguen ahí.
 
 Los visitantes sin sesión solo pueden ver, filtrar y buscar: no ven botones de edición y, aunque los forzaran por consola, la base de datos rechaza cualquier escritura que no venga de un usuario en `admin_users` (lo aplica RLS, no el frontend).
 
-## 4. Añadir nuevos meses y tareas
+## 4. Filtros
 
-- **Meses**: botón "Nuevo mes" en la barra de administración, o insertando una fila en `development_months` desde Supabase.
-- **Tareas**: botón "Nueva tarea" (usa el mes activo por defecto, pero puedes elegir cualquier otro desde el propio formulario).
+### Vista mensual (`Timeline`)
 
-No hace falta tocar ningún archivo del repositorio ni volver a desplegar nada para añadir contenido: todo vive en Supabase.
+Se combinan entre sí (mes + estado + prioridad + área + búsqueda de texto):
+
+- **Estado**: Todos / Completado / Progreso / Revisado / Pendiente / Arrastrada.
+- **Prioridad**: Todas / Alta / Media / Baja.
+- **Área**: Todas + las áreas que existan realmente en las tareas de ese mes (el filtro se oculta si ninguna tarea tiene área).
+- **Buscar dentro del mes**: por título, descripción, área, prioridad o estado.
+- **Limpiar filtros**: resetea los cuatro a la vez.
+
+### Roadmap
+
+Filtros independientes de la vista mensual, con la misma lógica (estado, prioridad, área, búsqueda y "Limpiar filtros"). Una tarea aparece en el roadmap si:
+
+- tiene `is_roadmap = true` (marcado manualmente desde el editor con el checkbox "Mostrar en el roadmap"), **y**
+- si no se ha elegido un estado concreto en el filtro, además se limita por defecto a estados `Pendiente`, `Arrastrada` o `Progreso` (para no mezclar con tareas ya cerradas). Si filtras por un estado concreto (incluido `Completado` o `Revisado`), se muestran esas exactamente.
 
 ## 5. Si Supabase no está configurado
 
@@ -126,17 +145,12 @@ Mientras `js/supabase-config.js` tenga los valores de ejemplo, la página:
 - Carga los meses y tareas desde `js/data.js` en modo **solo lectura** (filtros y búsqueda funcionan igual).
 - Desactiva el modo edición (el login informa de que Supabase no está listo).
 
-Esto es intencional: no existe un modo de edición "de mentira" basado en `localStorage`. El almacenamiento local solo se usa para preferencias sin importancia como el tema claro/oscuro.
+## 6. Estados y prioridades permitidos
 
-## 6. Estados permitidos
+Fijos en el código (`js/script.js`) y reforzados por `check constraints` en la base de datos — no se pueden guardar otros valores:
 
-Solo existen estos 5 estados, fijos en el código (`js/script.js`) y reforzados por un `check` en la base de datos:
-
-- Completado
-- Progreso
-- Revisado
-- Pendiente
-- Arrastrada
+- **Estados**: Completado, Progreso, Revisado, Pendiente, Arrastrada.
+- **Prioridades**: Alta (rojo/naranja), Media (ámbar), Baja (verde suave).
 
 ## 7. Logo y favicon
 
@@ -145,4 +159,4 @@ Solo existen estos 5 estados, fijos en el código (`js/script.js`) y reforzados 
 
 ## 8. Responsive
 
-Probado en desktop, tablet y mobile: el selector de meses hace scroll horizontal si no caben todos, los filtros se envuelven en varias líneas y las tarjetas pasan a una sola columna por debajo de 980px.
+Probado en desktop, tablet y mobile: el selector de meses hace scroll horizontal si no caben todos, los grupos de filtros pasan a 2 columnas (tablet) o 1 columna (mobile), y las tarjetas pasan a una sola columna por debajo de 980px.

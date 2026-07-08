@@ -27,13 +27,20 @@
   }
 
   function mapMonthRow(row) {
-    return { id: row.id, title: row.title, sortOrder: row.sort_order ?? 0 };
+    return {
+      id: row.id,
+      title: row.title,
+      sortOrder: row.sort_order ?? 0,
+      summary: row.summary || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
   }
 
   function mapTaskRow(row) {
     return {
       id: row.id,
-      month: row.month,
+      monthId: row.month_id,
       title: row.title,
       description: row.description || '',
       details: String(row.details || '').split('\n').map(line => line.trim()).filter(Boolean),
@@ -61,17 +68,41 @@
     return (data || []).map(mapTaskRow);
   }
 
-  async function insertMonth(title, sortOrder) {
+  async function insertMonth(month) {
     const sb = ensureClient();
-    const { data, error } = await sb.from('development_months').insert({ title, sort_order: sortOrder }).select().single();
+    const payload = {
+      title: month.title,
+      sort_order: month.sortOrder ?? 0,
+      summary: month.summary || ''
+    };
+    const { data, error } = await sb.from('development_months').insert(payload).select().single();
     if (error) throw error;
     return mapMonthRow(data);
+  }
+
+  async function updateMonth(id, month) {
+    const sb = ensureClient();
+    const payload = {
+      title: month.title,
+      sort_order: month.sortOrder ?? 0,
+      summary: month.summary || '',
+      updated_at: new Date().toISOString()
+    };
+    const { data, error } = await sb.from('development_months').update(payload).eq('id', id).select().single();
+    if (error) throw error;
+    return mapMonthRow(data);
+  }
+
+  async function deleteMonth(id) {
+    const sb = ensureClient();
+    const { error } = await sb.from('development_months').delete().eq('id', id);
+    if (error) throw error;
   }
 
   async function insertTask(task) {
     const sb = ensureClient();
     const payload = {
-      month: task.month,
+      month_id: task.monthId,
       title: task.title,
       description: task.description || '',
       details: (task.details || []).join('\n'),
@@ -89,7 +120,7 @@
   async function updateTask(id, task) {
     const sb = ensureClient();
     const payload = {
-      month: task.month,
+      month_id: task.monthId,
       title: task.title,
       description: task.description || '',
       details: (task.details || []).join('\n'),
@@ -97,6 +128,7 @@
       priority: task.priority || 'Media',
       area: task.area || '',
       is_roadmap: !!task.isRoadmap,
+      sort_order: task.sortOrder ?? 0,
       updated_at: new Date().toISOString()
     };
     const { data, error } = await sb.from('development_tasks').update(payload).eq('id', id).select().single();
@@ -154,6 +186,8 @@
     fetchMonths,
     fetchTasks,
     insertMonth,
+    updateMonth,
+    deleteMonth,
     insertTask,
     updateTask,
     deleteTask,

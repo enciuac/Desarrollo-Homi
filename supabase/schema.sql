@@ -1,9 +1,11 @@
 -- HOMI Development Log — esquema de Supabase
 -- Ejecutar en: Supabase Dashboard > SQL Editor > New query
--- Se puede pegar de una vez, es idempotente (usa IF NOT EXISTS donde aplica).
+-- Es SEGURO volver a pegar y ejecutar este archivo completo aunque ya hayas
+-- ejecutado una versión anterior: usa IF NOT EXISTS / DO blocks para migrar
+-- en lugar de fallar. No borra tareas ni meses existentes.
 
 -- ============================================================
--- 1. TABLAS
+-- 1. TABLA DE MESES
 -- ============================================================
 
 create table if not exists public.development_months (
@@ -13,14 +15,20 @@ create table if not exists public.development_months (
   created_at timestamptz not null default now()
 );
 
+alter table public.development_months add column if not exists summary text default '';
+alter table public.development_months add column if not exists updated_at timestamptz not null default now();
+
+-- ============================================================
+-- 2. TABLA DE TAREAS
+-- ============================================================
+
 create table if not exists public.development_tasks (
   id uuid primary key default gen_random_uuid(),
-  month text not null,
   title text not null,
   description text default '',
   details text default '',
-  status text not null check (status in ('Completado', 'Progreso', 'Revisado', 'Pendiente', 'Arrastrada')),
-  priority text default 'Media' check (priority in ('Alta', 'Media', 'Baja')),
+  status text not null default 'Pendiente',
+  priority text default 'Media',
   area text default '',
   is_roadmap boolean not null default false,
   sort_order integer not null default 0,
@@ -28,21 +36,82 @@ create table if not exists public.development_tasks (
   updated_at timestamptz not null default now()
 );
 
-create index if not exists development_tasks_month_idx on public.development_tasks (month);
-create index if not exists development_tasks_status_idx on public.development_tasks (status);
+-- --- Migración: pasar de `month text` a `month_id uuid` referenciando development_months ---
 
--- Lista blanca de administradores: solo estos emails pueden crear, editar
--- o borrar tareas/meses. El email debe coincidir con el de un usuario
--- creado en Supabase Auth (Authentication > Users).
+alter table public.development_tasks add column if not exists month_id uuid;
+
+-- Si la tabla venía de una versión anterior con columna `month` de texto,
+-- crea los meses que falten y enlaza las tareas por título antes de forzar
+-- la relación.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'development_tasks' and column_name = 'month'
+  ) then
+    insert into public.development_months (title, sort_order)
+    select distinct t.month, 999
+    from public.development_tasks t
+    where t.month is not null and t.month_id is null
+    on conflict (title) do nothing;
+
+    update public.development_tasks t
+    set month_id = m.id
+    from public.development_months m
+    where t.month_id is null and t.month = m.title;
+
+    alter table public.development_tasks drop column month;
+  end if;
+end $$;
+
+-- Constraint de FK (bloquea borrar un mes que todavía tiene tareas)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'development_tasks_month_id_fkey'
+  ) then
+    alter table public.development_tasks
+      add constraint development_tasks_month_id_fkey
+      foreign key (month_id) references public.development_months(id) on delete restrict;
+  end if;
+end $$;
+
+-- Constraints de valores permitidos para status y priority
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'development_tasks_status_check') then
+    alter table public.development_tasks
+      add constraint development_tasks_status_check
+      check (status in ('Completado', 'Progreso', 'Revisado', 'Pendiente', 'Arrastrada'));
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'development_tasks_priority_check') then
+    alter table public.development_tasks
+      add constraint development_tasks_priority_check
+      check (priority is null or priority in ('Alta', 'Media', 'Baja'));
+  end if;
+end $$;
+
+create index if not exists development_tasks_month_id_idx on public.development_tasks (month_id);
+create index if not exists development_tasks_status_idx on public.development_tasks (status);
+create index if not exists development_tasks_priority_idx on public.development_tasks (priority);
+create index if not exists development_tasks_is_roadmap_idx on public.development_tasks (is_roadmap);
+
+-- ============================================================
+-- 3. LISTA BLANCA DE ADMINISTRADORES
+-- ============================================================
+-- Solo estos emails pueden crear, editar o borrar meses/tareas. El email
+-- debe coincidir con el de un usuario creado en Supabase Auth
+-- (Authentication > Users).
+
 create table if not exists public.admin_users (
   email text primary key
 );
 
--- Sustituye por tu email real antes o después de ejecutar el script:
+-- Sustituye por tu email real:
 -- insert into public.admin_users (email) values ('tu-email@dominio.com');
 
 -- ============================================================
--- 2. ROW LEVEL SECURITY
+-- 4. ROW LEVEL SECURITY
 -- ============================================================
 
 alter table public.development_months enable row level security;
@@ -69,7 +138,9 @@ create policy "read own admin row"
   using (auth.email() = email);
 
 -- Escritura (insert/update/delete) solo para usuarios autenticados que
--- además figuren en admin_users.
+-- además figuren en admin_users. La seguridad vive aquí, no en el
+-- frontend: aunque alguien fuerce los botones por consola, Postgres
+-- rechaza la escritura si no cumple esta condición.
 drop policy if exists "admins write months" on public.development_months;
 create policy "admins write months"
   on public.development_months for all
@@ -95,11 +166,11 @@ create policy "admins write tasks"
   );
 
 -- ============================================================
--- 3. DATOS INICIALES DE EJEMPLO (opcional)
+-- 5. DATOS INICIALES DE EJEMPLO (opcional)
 -- ============================================================
 -- Puedes generar INSERTs reales a partir de js/data.js con el botón
--- "Exportar SQL de ejemplo" del modo edición (ver README), o crear los
--- meses a mano aquí:
+-- "Descargar SQL de estos datos" del banner de modo lectura (ver README),
+-- o crear los meses a mano aquí:
 
 -- insert into public.development_months (title, sort_order) values
 --   ('Mayo 2026', 0),

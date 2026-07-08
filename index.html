@@ -34,7 +34,6 @@
 
     <div id="dataSourceBanner" class="data-source-banner" hidden>
       <span id="dataSourceBannerText"></span>
-      <button id="exportSeedSqlBtn" class="secondary-btn small" type="button">Descargar SQL de estos datos</button>
     </div>
     <div id="adminBar" class="admin-bar" aria-label="Modo de edicion"></div>
 
@@ -84,13 +83,24 @@
 
         <section class="controls-section task-controls" aria-label="Filtros del mes seleccionado">
           <div class="controls-card">
-            <label class="search-box" for="searchInput">
+            <label class="search-box full-field" for="searchInput">
               <span>Buscar dentro del mes</span>
               <input id="searchInput" type="search" placeholder="Buscar tarea, area, prioridad..." autocomplete="off" />
             </label>
-            <div>
-              <span class="control-label">Estado de las tareas</span>
+            <div id="statusFilterGroup">
+              <span class="control-label">Estado</span>
               <div id="statusFilters" class="filter-row"></div>
+            </div>
+            <div id="priorityFilterGroup">
+              <span class="control-label">Prioridad</span>
+              <div id="priorityFilters" class="filter-row"></div>
+            </div>
+            <div id="areaFilterGroup">
+              <span class="control-label">Área</span>
+              <div id="areaFilters" class="filter-row"></div>
+            </div>
+            <div class="filters-footer full-field">
+              <button id="clearMonthFiltersBtn" class="secondary-btn small" type="button">Limpiar filtros</button>
             </div>
           </div>
         </section>
@@ -113,8 +123,25 @@
           <button id="showAllRoadmap" class="secondary-btn small" type="button">Ver todas</button>
         </div>
         <div class="roadmap-controls" aria-label="Filtros del roadmap">
-          <span class="control-label">Filtrar roadmap por estado</span>
-          <div id="roadmapFilters" class="filter-row"></div>
+          <label class="search-box full-field" for="roadmapSearchInput">
+            <span>Buscar en el roadmap</span>
+            <input id="roadmapSearchInput" type="search" placeholder="Buscar tarea, area, prioridad..." autocomplete="off" />
+          </label>
+          <div id="roadmapStatusFilterGroup">
+            <span class="control-label">Estado</span>
+            <div id="roadmapFilters" class="filter-row"></div>
+          </div>
+          <div id="roadmapPriorityFilterGroup">
+            <span class="control-label">Prioridad</span>
+            <div id="roadmapPriorityFilters" class="filter-row"></div>
+          </div>
+          <div id="roadmapAreaFilterGroup">
+            <span class="control-label">Área</span>
+            <div id="roadmapAreaFilters" class="filter-row"></div>
+          </div>
+          <div class="filters-footer full-field">
+            <button id="clearRoadmapFiltersBtn" class="secondary-btn small" type="button">Limpiar filtros</button>
+          </div>
         </div>
         <div id="roadmapList" class="roadmap-list"></div>
       </section>
@@ -181,6 +208,10 @@
           <span>Área</span>
           <input id="editArea" type="text" placeholder="Frontend, Backend, Diseño..." />
         </label>
+        <label>
+          <span>Orden</span>
+          <input id="editSortOrder" type="number" step="1" min="0" />
+        </label>
         <label class="full-field">
           <span>Descripción</span>
           <textarea id="editDescription" rows="4"></textarea>
@@ -198,6 +229,37 @@
           <div>
             <button class="secondary-btn small" type="button" data-close-modal>Cancelar</button>
             <button class="primary-btn" type="submit">Guardar cambios</button>
+          </div>
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <div id="monthModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+    <section class="modal-card small-modal" role="dialog" aria-modal="true" aria-labelledby="monthEditorTitle">
+      <button class="modal-close" type="button" data-close-modal aria-label="Cerrar">×</button>
+      <span class="eyebrow">Meses</span>
+      <h2 id="monthEditorTitle">Nuevo mes</h2>
+      <form id="monthForm" class="modal-form">
+        <label>
+          <span>Título del mes</span>
+          <input id="editMonthTitle" type="text" placeholder="Agosto 2026" required />
+        </label>
+        <label>
+          <span>Orden</span>
+          <input id="editMonthSortOrder" type="number" step="1" min="0" required />
+        </label>
+        <label>
+          <span>Resumen del mes (opcional)</span>
+          <textarea id="editMonthSummary" rows="3" placeholder="Foco del sprint, objetivo..."></textarea>
+        </label>
+        <p id="monthFormError" class="form-error" role="alert"></p>
+        <div class="editor-actions full-field">
+          <button id="deleteMonthBtn" class="secondary-btn small danger" type="button" hidden>Eliminar mes</button>
+          <div>
+            <button class="secondary-btn small" type="button" data-close-modal>Cancelar</button>
+            <button class="primary-btn" type="submit">Guardar mes</button>
           </div>
         </div>
       </form>
