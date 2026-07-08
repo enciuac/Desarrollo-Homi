@@ -39,6 +39,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -252,11 +253,23 @@ button { cursor: pointer; }
   .controls-card, .roadmap-controls { grid-template-columns: 1fr 1fr; }
   .task-list, .roadmap-list { grid-template-columns: 1fr; }
   .split-heading { align-items: start; flex-direction: column; }
+
+  /* Tablet usa el mismo tratamiento de cabecera que mobile: el nav pasa a
+     su propia fila con scroll horizontal para que el logo y los botones
+     de tema/acceso privado nunca se salgan de la pantalla. */
+  .site-header { flex-wrap: wrap; row-gap: 10px; top: 8px; margin-top: 8px; border-radius: 22px; }
+  .top-nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+  }
+  .header-actions { margin-left: auto; }
 }
 @media (max-width: 640px) {
   .page-shell { width: min(100% - 20px, 1180px); }
-  .top-nav { display: none; }
-  .site-header { top: 8px; margin-top: 8px; border-radius: 22px; }
   .hero-copy, .hero-panel { border-radius: 24px; padding: 24px; }
   .hero-copy h1 { font-size: 42px; }
   .stats-grid, .stats-grid.compact { grid-template-columns: 1fr; }
@@ -371,7 +384,6 @@ button { cursor: pointer; }
   .modal-card h2 { font-size: 28px; }
 }
 
-.data-source-banner[hidden] { display: none; }
 .data-source-banner {
   display: flex;
   flex-wrap: wrap;
