@@ -423,7 +423,7 @@ function renderKanban() {
 // ---------- Propuestas del equipo ----------
 
 async function refreshProposals() {
-  if (!state.isAdmin || !window.HomiSupabase || !HomiSupabase.isConfigured) {
+  if (!window.HomiSupabase || !HomiSupabase.isConfigured) {
     state.proposals = [];
     return;
   }
@@ -444,34 +444,32 @@ function proposalCard(proposal) {
     date ? `<span class="badge neutral">${date}</span>` : '',
     proposal.reporterName ? `<span class="badge neutral">${proposal.reporterName}</span>` : ''
   ].join('');
+  const adminActions = state.isAdmin
+    ? `<div class="editor-actions">
+        <button class="secondary-btn small danger" type="button" data-discard-proposal="${proposal.id}">Descartar</button>
+        <button class="primary-btn small" type="button" data-accept-proposal="${proposal.id}">Aceptar y publicar</button>
+      </div>`
+    : '';
 
   return `
     <article class="proposal-card">
       <div class="task-top">${metaBadges}</div>
       <h3>${proposal.title}</h3>
       ${proposal.description ? `<p>${proposal.description}</p>` : ''}
-      <div class="editor-actions">
-        <button class="secondary-btn small danger" type="button" data-discard-proposal="${proposal.id}">Descartar</button>
-        <button class="primary-btn small" type="button" data-accept-proposal="${proposal.id}">Aceptar y publicar</button>
-      </div>
+      ${adminActions}
     </article>
   `;
 }
 
 function renderProposals() {
-  const adminPanel = document.getElementById('proposalsAdminPanel');
-  const publicNote = document.getElementById('proposalsPublicNote');
   const list = document.getElementById('proposalsList');
-  if (!adminPanel || !list) return;
-
-  adminPanel.hidden = !state.isAdmin;
-  publicNote.hidden = state.isAdmin;
-  if (!state.isAdmin) return;
+  if (!list) return;
 
   list.innerHTML = state.proposals.length
     ? state.proposals.map(proposalCard).join('')
     : '<p class="kanban-empty">No hay propuestas pendientes.</p>';
 
+  if (!state.isAdmin) return;
   list.querySelectorAll('[data-accept-proposal]').forEach(button => {
     button.addEventListener('click', () => openProposalToTask(button.dataset.acceptProposal));
   });
@@ -1033,6 +1031,7 @@ async function init() {
 
   bindEvents();
   await loadData();
+  await refreshProposals();
 
   if (!state.activeMonthId && state.months.length) {
     const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);

@@ -167,20 +167,19 @@ create policy "read own admin row"
   using (auth.email() = email);
 
 -- Propuestas: cualquiera (incluso sin login) puede crear una, pero solo
--- un admin puede leerlas o borrarlas. Nadie puede editarlas ni leer las
--- de otros — es un buzon de un solo sentido hacia el equipo.
+-- un admin puede aceptarlas (crear la tarea real) o borrarlas. La lectura
+-- es publica a proposito: todo el equipo ve lo que ya se ha propuesto,
+-- para no duplicar propuestas de fallos o ideas repetidas.
 drop policy if exists "public insert proposals" on public.development_proposals;
 create policy "public insert proposals"
   on public.development_proposals for insert
   with check (true);
 
 drop policy if exists "admins read proposals" on public.development_proposals;
-create policy "admins read proposals"
+drop policy if exists "public read proposals" on public.development_proposals;
+create policy "public read proposals"
   on public.development_proposals for select
-  using (
-    auth.role() = 'authenticated'
-    and exists (select 1 from public.admin_users a where a.email = auth.email())
-  );
+  using (true);
 
 drop policy if exists "admins delete proposals" on public.development_proposals;
 create policy "admins delete proposals"

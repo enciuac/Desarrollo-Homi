@@ -67,7 +67,7 @@ Crea:
 - **Row Level Security** activado en las cuatro tablas, con estas políticas:
   - **Lectura pública** de meses y tareas (cualquier visitante, sin login).
   - **Escritura (insert/update/delete)** en meses y tareas solo si el usuario está autenticado **y** su email aparece en `admin_users`.
-  - **Propuestas**: cualquiera (incluso sin login) puede crear una (`insert`), pero solo un admin puede leerlas o borrarlas — nadie puede leer las propuestas de otros, ni siquiera la suya propia después de enviarla.
+  - **Propuestas**: cualquiera (incluso sin login) puede crear una (`insert`) y leer la lista completa (para evitar duplicados entre compañeros), pero solo un admin puede borrarlas o aceptarlas.
   - Un usuario autenticado solo puede leer su propia fila de `admin_users` (para que el frontend sepa si debe mostrar el modo edición), nunca la lista completa.
 
 La seguridad depende de estas políticas, **no** de ocultar botones en el frontend ni la `anon key` (esa clave está pensada para ser pública).
@@ -152,9 +152,9 @@ Sección "Kanban" (enlace en la cabecera), con el mismo mes activo que el Timeli
 
 Sección "Propuestas" (enlace en la cabecera), pensada para que cualquier compañero reporte fallos o ideas sin necesitar login:
 
-1. **Cualquier visitante** pulsa "Proponer tarea" y rellena título, descripción, la prioridad que él cree que tiene, y opcionalmente su nombre. Al enviarla, se guarda directamente en Supabase — el visitante no vuelve a verla (no es un tablón público, es un buzón de un solo sentido).
-2. **Solo el admin** ve la lista de propuestas pendientes (sección visible únicamente en modo edición), con fecha de envío, quién la mandó (si lo indicó) y su prioridad sugerida.
-3. Por cada propuesta, el admin puede:
+1. **Cualquier visitante** pulsa "Proponer tarea" y rellena título, descripción, la prioridad que él cree que tiene, y opcionalmente su nombre. Al enviarla, se guarda directamente en Supabase.
+2. **Todo el equipo ve la lista de propuestas pendientes** (título, descripción, fecha de envío, quién la mandó si lo indicó, y su prioridad sugerida) — así nadie propone dos veces el mismo fallo o idea. Es de solo lectura para quien no ha iniciado sesión: no hay botones de acción.
+3. **Solo el admin** ve además los botones de acción en cada propuesta:
    - **"Aceptar y publicar"**: abre el editor de tareas normal, precargado con el título, la descripción y la prioridad de la propuesta. El admin completa mes, estado, área, etc. y guarda — se crea como tarea real y la propuesta original se borra automáticamente.
    - **"Descartar"**: pide confirmación y la borra sin crear ninguna tarea.
 
