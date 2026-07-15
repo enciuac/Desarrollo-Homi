@@ -1,5 +1,5 @@
 const STATUSES = ['Completado', 'Progreso', 'Revisado', 'Pendiente', 'Arrastrada'];
-const PRIORITIES = ['Alta', 'Media', 'Baja'];
+const PRIORITIES = ['Máxima', 'Alta', 'Media-alta', 'Media', 'Media-baja', 'Baja'];
 const STATUS_CLASS = {
   Completado: 'green',
   Progreso: 'blue',
@@ -8,9 +8,20 @@ const STATUS_CLASS = {
   Arrastrada: 'orange'
 };
 const PRIORITY_CLASS = {
+  'Máxima': 'priority-maxima',
   Alta: 'priority-alta',
+  'Media-alta': 'priority-media-alta',
   Media: 'priority-media',
+  'Media-baja': 'priority-media-baja',
   Baja: 'priority-baja'
+};
+const PRIORITY_WEIGHT = {
+  'Máxima': 0,
+  Alta: 1,
+  'Media-alta': 2,
+  Media: 3,
+  'Media-baja': 4,
+  Baja: 5
 };
 const ROADMAP_DEFAULT_STATUSES = ['Arrastrada', 'Pendiente', 'Progreso'];
 
@@ -83,7 +94,7 @@ function statCard(label, value, subtext = '') {
 }
 
 function priorityWeight(priority) {
-  return { Alta: 0, Media: 1, Baja: 2 }[priority] ?? 3;
+  return PRIORITY_WEIGHT[priority] ?? 6;
 }
 
 function countByStatus(tasks) {

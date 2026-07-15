@@ -84,11 +84,12 @@ begin
       add constraint development_tasks_status_check
       check (status in ('Completado', 'Progreso', 'Revisado', 'Pendiente', 'Arrastrada'));
   end if;
-  if not exists (select 1 from pg_constraint where conname = 'development_tasks_priority_check') then
-    alter table public.development_tasks
-      add constraint development_tasks_priority_check
-      check (priority is null or priority in ('Alta', 'Media', 'Baja'));
+  if exists (select 1 from pg_constraint where conname = 'development_tasks_priority_check') then
+    alter table public.development_tasks drop constraint development_tasks_priority_check;
   end if;
+  alter table public.development_tasks
+    add constraint development_tasks_priority_check
+    check (priority is null or priority in ('Máxima', 'Alta', 'Media-alta', 'Media', 'Media-baja', 'Baja'));
 end $$;
 
 create index if not exists development_tasks_month_id_idx on public.development_tasks (month_id);
@@ -117,11 +118,12 @@ alter table public.development_proposals add column if not exists created_at tim
 
 do $$
 begin
-  if not exists (select 1 from pg_constraint where conname = 'development_proposals_priority_check') then
-    alter table public.development_proposals
-      add constraint development_proposals_priority_check
-      check (priority is null or priority in ('Alta', 'Media', 'Baja'));
+  if exists (select 1 from pg_constraint where conname = 'development_proposals_priority_check') then
+    alter table public.development_proposals drop constraint development_proposals_priority_check;
   end if;
+  alter table public.development_proposals
+    add constraint development_proposals_priority_check
+    check (priority is null or priority in ('Máxima', 'Alta', 'Media-alta', 'Media', 'Media-baja', 'Baja'));
 end $$;
 
 -- ============================================================
@@ -224,7 +226,6 @@ create policy "admins write tasks"
 -- js/data.js) o crear los meses a mano aquí:
 
 -- insert into public.development_months (title, sort_order) values
---   ('Mayo 2026', 0),
---   ('Junio 2026', 1),
---   ('Julio 2026', 2)
+--   ('Junio 2026', 0),
+--   ('Julio 2026', 1)
 -- on conflict (title) do nothing;

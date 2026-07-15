@@ -255,8 +255,11 @@ button { cursor: pointer; }
 .badge.amber { color: var(--amber); background: var(--amber-soft); }
 .badge.orange { color: var(--orange); background: var(--orange-soft); }
 .badge.neutral { color: var(--muted); background: rgba(105,115,134,.12); }
+.badge.priority-maxima { color: #8f1420; background: rgba(143,20,32,.15); }
 .badge.priority-alta { color: #c0311a; background: rgba(224,62,32,.13); }
+.badge.priority-media-alta { color: var(--orange); background: var(--orange-soft); }
 .badge.priority-media { color: var(--amber); background: var(--amber-soft); }
+.badge.priority-media-baja { color: #5c8a3a; background: rgba(92,138,58,.14); }
 .badge.priority-baja { color: var(--green); background: var(--green-soft); }
 .task-card h3 { margin: 0 0 10px; font-size: 20px; letter-spacing: -.025em; }
 .task-card p { margin: 0; color: var(--muted); line-height: 1.62; }
