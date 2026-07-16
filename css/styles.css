@@ -350,7 +350,8 @@ button { cursor: pointer; }
   .month-tabs { display: none; }
   .month-dropdown { display: block; }
 
-  .filters-toggle-btn { display: inline-flex; margin: 4px 0 14px; }
+  .filters-toggle-btn { display: inline-flex; }
+  .heading-actions-row { margin-top: 4px; }
   .task-controls.filters-collapsed, .roadmap-controls.filters-collapsed { display: none; }
 
   .site-header { top: 8px; margin-top: 8px; border-radius: 22px; }
