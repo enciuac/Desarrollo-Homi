@@ -85,6 +85,7 @@
 
       <section class="months-section" aria-label="Meses disponibles">
         <div id="monthTabs" class="month-tabs"></div>
+        <button id="viewAllMonthsBtn" class="secondary-btn small" type="button" aria-pressed="false">Ver todos los meses</button>
         <button id="addMonthBtn" class="secondary-btn small" type="button" hidden>Añadir mes</button>
       </section>
 
@@ -134,7 +135,12 @@
         </div>
       </section>
 
-      <section id="kanban" class="kanban-section">
+      <section class="section-toggles" aria-label="Mostrar u ocultar secciones">
+        <button id="toggleKanbanBtn" class="secondary-btn small" type="button" aria-pressed="false">Mostrar Kanban</button>
+        <button id="toggleRoadmapBtn" class="secondary-btn small" type="button" aria-pressed="false">Mostrar Roadmap</button>
+      </section>
+
+      <section id="kanban" class="kanban-section" hidden>
         <div class="section-heading split-heading">
           <div>
             <span class="eyebrow">Vista Kanban</span>
@@ -155,7 +161,7 @@
         <div id="kanbanBoard" class="kanban-board"></div>
       </section>
 
-      <section id="roadmap" class="roadmap-section">
+      <section id="roadmap" class="roadmap-section" hidden>
         <div class="section-heading split-heading">
           <div>
             <span class="eyebrow">Roadmap vivo</span>

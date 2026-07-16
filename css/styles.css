@@ -178,6 +178,7 @@ button { cursor: pointer; }
 .primary-btn { color: white; background: linear-gradient(135deg, var(--primary), #ff9d69); box-shadow: 0 12px 28px rgba(255,127,64,.28); }
 .secondary-btn { color: var(--text); background: var(--card-solid); border-color: var(--line); }
 .secondary-btn.small, .primary-btn.small { min-height: 40px; padding: 0 14px; font-size: 14px; }
+.secondary-btn.active { color: white; border-color: transparent; background: linear-gradient(135deg, var(--primary), #ff9c66); box-shadow: 0 10px 24px rgba(255,127,64,.22); }
 .hero-panel { border-radius: var(--radius-xl); padding: 26px; display: flex; flex-direction: column; justify-content: end; min-height: 320px; }
 .panel-topline, .control-label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 800; color: var(--muted); }
 .hero-panel strong { font-size: 36px; letter-spacing: -.04em; margin-top: 8px; display: block; }
@@ -226,7 +227,8 @@ button { cursor: pointer; }
 }
 .filter-btn.active, .month-tab.active { color: white; border-color: transparent; background: linear-gradient(135deg, var(--primary), #ff9c66); box-shadow: 0 10px 24px rgba(255,127,64,.22); }
 .months-section { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.months-section #addMonthBtn { flex: none; }
+.months-section #addMonthBtn, .months-section #viewAllMonthsBtn { flex: none; }
+.section-toggles { display: flex; gap: 12px; flex-wrap: wrap; margin: 8px 0 32px; }
 .month-tabs { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0 16px; flex: 1; }
 .month-tab { min-width: max-content; }
 .month-tab-group { display: inline-flex; align-items: center; gap: 4px; min-width: max-content; }
@@ -244,6 +246,10 @@ button { cursor: pointer; }
 
 
 .task-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.priority-divider { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; margin: 6px 0 -2px; }
+.priority-divider .badge { flex: none; }
+.priority-divider-line { flex: 1; height: 1px; background: var(--line); }
+.priority-divider:first-child { margin-top: 0; }
 .task-card { border-radius: var(--radius-lg); overflow: hidden; transition: transform .2s ease, box-shadow .2s ease; }
 .task-card:hover { transform: translateY(-3px); }
 .task-button { width: 100%; border: 0; background: transparent; color: inherit; text-align: left; padding: 20px; }

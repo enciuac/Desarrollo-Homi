@@ -38,6 +38,9 @@ const state = {
   query: '',
   sortMode: 'priority',
   showCompleted: false,
+  allMonthsView: false,
+  kanbanVisible: false,
+  roadmapVisible: false,
   taskListExpanded: false,
   roadmapExpanded: false,
   roadmapStatus: 'Todos',
@@ -127,6 +130,12 @@ function tasksForMonth(monthId) {
 
 function getActiveMonth() {
   return state.months.find(month => month.id === state.activeMonthId) || state.months[0] || null;
+}
+
+function currentScopeTasks() {
+  if (state.allMonthsView) return state.tasks;
+  const month = getActiveMonth();
+  return month ? tasksForMonth(month.id) : [];
 }
 
 function findTask(taskId) {
@@ -301,7 +310,7 @@ function renderMonthTabs() {
 
   container.innerHTML = sorted.map(month => `
     <span class="month-tab-group">
-      <button class="month-tab ${state.activeMonthId === month.id ? 'active' : ''}" type="button" data-month-id="${month.id}">${month.title}</button>
+      <button class="month-tab ${!state.allMonthsView && state.activeMonthId === month.id ? 'active' : ''}" type="button" data-month-id="${month.id}">${month.title}</button>
       ${state.isAdmin ? `<button class="month-tab-edit" type="button" data-edit-month="${month.id}" aria-label="Editar mes ${month.title}">&#9998;</button>` : ''}
     </span>
   `).join('');
@@ -309,6 +318,7 @@ function renderMonthTabs() {
   container.querySelectorAll('[data-month-id]').forEach(button => {
     button.addEventListener('click', () => {
       state.activeMonthId = button.dataset.monthId;
+      state.allMonthsView = false;
       state.status = 'Todos';
       state.priority = 'Todas';
       state.query = '';
@@ -328,13 +338,23 @@ function renderMonthTabs() {
   });
 }
 
+function renderViewAllMonthsButton() {
+  const btn = document.getElementById('viewAllMonthsBtn');
+  if (!btn) return;
+  btn.classList.toggle('active', state.allMonthsView);
+  btn.setAttribute('aria-pressed', String(state.allMonthsView));
+  btn.textContent = state.allMonthsView ? 'Ver por mes' : 'Ver todos los meses';
+}
+
 function renderActiveMonth() {
   const month = getActiveMonth();
-  const tasks = month ? tasksForMonth(month.id) : [];
+  const tasks = currentScopeTasks();
   const counts = countByStatus(tasks);
   const percent = completionPercent(tasks);
 
-  document.getElementById('activeMonthTitle').textContent = month ? month.title : 'Sin meses todavia';
+  document.getElementById('activeMonthTitle').textContent = state.allMonthsView
+    ? 'Todos los meses'
+    : (month ? month.title : 'Sin meses todavia');
 
   document.getElementById('monthStats').innerHTML = [
     statCard('Avance', `${percent}%`),
@@ -368,14 +388,10 @@ function filteredTasks(tasks, filters) {
     });
   }
 
-  return filtered.sort((a, b) => {
-    if (a.status === 'Arrastrada' && b.status !== 'Arrastrada') return -1;
-    if (a.status !== 'Arrastrada' && b.status === 'Arrastrada') return 1;
-    return priorityWeight(a.priority) - priorityWeight(b.priority);
-  });
+  return filtered.sort((a, b) => priorityWeight(a.priority) - priorityWeight(b.priority));
 }
 
-function taskCard(task, isRoadmap = false) {
+function taskCard(task, { isRoadmap = false, showMonth = false } = {}) {
   const editButton = state.isAdmin
     ? `<button class="edit-task-btn" type="button" data-edit-task="${task.id}">Editar</button>`
     : '';
@@ -385,7 +401,7 @@ function taskCard(task, isRoadmap = false) {
     task.area ? `<span class="badge neutral">${task.area}</span>` : '',
     shortDate ? `<span class="badge neutral">${shortDate}</span>` : ''
   ].join('');
-  const month = isRoadmap ? findMonth(task.monthId) : null;
+  const month = (isRoadmap || showMonth) ? findMonth(task.monthId) : null;
 
   return `
     <article class="${isRoadmap ? 'roadmap-card' : 'task-card'}" ${isRoadmap ? '' : 'data-task-card'}>
@@ -396,7 +412,7 @@ function taskCard(task, isRoadmap = false) {
         </div>
         <h3>${task.title}</h3>
         ${task.description ? `<p>${task.description}</p>` : ''}
-        ${isRoadmap && month ? `<div class="task-footer"><span>${month.title}</span></div>` : ''}
+        ${month ? `<div class="task-footer"><span>${month.title}</span></div>` : ''}
       </button>
       ${!isRoadmap && task.details.length ? `<div class="task-details"><div class="task-details-inner"><ul>${task.details.map(item => `<li>${item}</li>`).join('')}</ul></div></div>` : ''}
       ${editButton}
@@ -404,17 +420,30 @@ function taskCard(task, isRoadmap = false) {
   `;
 }
 
+function priorityDivider(priority) {
+  return `<div class="priority-divider">${priorityBadge(priority)}<span class="priority-divider-line"></span></div>`;
+}
+
+function renderTaskCards(tasks, { isRoadmap = false, showMonth = false, groupByPriority = false } = {}) {
+  let lastPriority = null;
+  return tasks.map(task => {
+    let divider = '';
+    if (groupByPriority && task.priority !== lastPriority) {
+      divider = priorityDivider(task.priority);
+      lastPriority = task.priority;
+    }
+    return divider + taskCard(task, { isRoadmap, showMonth });
+  }).join('');
+}
+
 function renderTasks() {
-  const month = getActiveMonth();
-  const tasks = month
-    ? filteredTasks(tasksForMonth(month.id), { status: state.status, priority: state.priority, query: state.query, showCompleted: state.showCompleted, sortMode: state.sortMode })
-    : [];
+  const tasks = filteredTasks(currentScopeTasks(), { status: state.status, priority: state.priority, query: state.query, showCompleted: state.showCompleted, sortMode: state.sortMode });
   const list = document.getElementById('taskList');
   const empty = document.getElementById('emptyState');
 
   empty.hidden = tasks.length !== 0;
   const visible = state.taskListExpanded ? tasks : tasks.slice(0, CARDS_PER_SECTION);
-  list.innerHTML = visible.map(task => taskCard(task)).join('');
+  list.innerHTML = renderTaskCards(visible, { showMonth: state.allMonthsView, groupByPriority: state.sortMode === 'priority' });
   bindTaskCardEvents();
 
   renderShowMore('taskListShowMoreBtn', tasks.length, state.taskListExpanded, () => {
@@ -458,7 +487,7 @@ function renderRoadmap() {
   });
 
   const visible = state.roadmapExpanded ? tasks : tasks.slice(0, CARDS_PER_SECTION);
-  document.getElementById('roadmapList').innerHTML = visible.map(task => taskCard(task, true)).join('');
+  document.getElementById('roadmapList').innerHTML = renderTaskCards(visible, { isRoadmap: true, groupByPriority: state.roadmapSortMode === 'priority' });
   document.getElementById('showAllRoadmap').textContent = state.roadmapExpanded ? 'Ver menos' : `Ver todas (${tasks.length})`;
   bindTaskCardEvents();
 }
@@ -466,17 +495,16 @@ function renderRoadmap() {
 // ---------- Render: Kanban ----------
 
 function tasksForKanban() {
-  const month = getActiveMonth();
-  if (!month) return [];
-  return tasksForMonth(month.id).filter(task => state.showCompleted || task.status !== 'Completado');
+  return currentScopeTasks().filter(task => state.showCompleted || task.status !== 'Completado');
 }
 
 function kanbanCard(task) {
   const secondaryBadge = state.kanbanMode === 'priority' ? statusBadge(task.status) : priorityBadge(task.priority);
   const areaBadge = task.area ? `<span class="badge neutral">${task.area}</span>` : '';
+  const monthBadge = state.allMonthsView ? (findMonth(task.monthId) ? `<span class="badge neutral">${findMonth(task.monthId).title}</span>` : '') : '';
   return state.isAdmin
-    ? `<button class="kanban-card" type="button" data-edit-task="${task.id}"><span class="task-top">${secondaryBadge}${areaBadge}</span><h4>${task.title}</h4></button>`
-    : `<div class="kanban-card kanban-card-static"><span class="task-top">${secondaryBadge}${areaBadge}</span><h4>${task.title}</h4></div>`;
+    ? `<button class="kanban-card" type="button" data-edit-task="${task.id}"><span class="task-top">${secondaryBadge}${areaBadge}${monthBadge}</span><h4>${task.title}</h4></button>`
+    : `<div class="kanban-card kanban-card-static"><span class="task-top">${secondaryBadge}${areaBadge}${monthBadge}</span><h4>${task.title}</h4></div>`;
 }
 
 function renderKanban() {
@@ -518,6 +546,41 @@ function renderKanban() {
       renderKanban();
     });
   });
+}
+
+// ---------- Visibilidad de secciones (Kanban / Roadmap) ----------
+
+function renderSectionVisibility() {
+  const kanbanSection = document.getElementById('kanban');
+  const roadmapSection = document.getElementById('roadmap');
+  const kanbanBtn = document.getElementById('toggleKanbanBtn');
+  const roadmapBtn = document.getElementById('toggleRoadmapBtn');
+
+  if (kanbanSection) kanbanSection.hidden = !state.kanbanVisible;
+  if (roadmapSection) roadmapSection.hidden = !state.roadmapVisible;
+
+  if (kanbanBtn) {
+    kanbanBtn.textContent = state.kanbanVisible ? 'Ocultar Kanban' : 'Mostrar Kanban';
+    kanbanBtn.classList.toggle('active', state.kanbanVisible);
+    kanbanBtn.setAttribute('aria-pressed', String(state.kanbanVisible));
+  }
+  if (roadmapBtn) {
+    roadmapBtn.textContent = state.roadmapVisible ? 'Ocultar Roadmap' : 'Mostrar Roadmap';
+    roadmapBtn.classList.toggle('active', state.roadmapVisible);
+    roadmapBtn.setAttribute('aria-pressed', String(state.roadmapVisible));
+  }
+}
+
+function showKanbanSection() {
+  state.kanbanVisible = true;
+  renderSectionVisibility();
+  document.getElementById('kanban').scrollIntoView({ behavior: 'smooth' });
+}
+
+function showRoadmapSection() {
+  state.roadmapVisible = true;
+  renderSectionVisibility();
+  document.getElementById('roadmap').scrollIntoView({ behavior: 'smooth' });
 }
 
 // ---------- Propuestas del equipo ----------
@@ -1069,6 +1132,32 @@ function bindEvents() {
       renderKanban();
     });
   });
+  document.getElementById('viewAllMonthsBtn').addEventListener('click', () => {
+    state.allMonthsView = !state.allMonthsView;
+    state.taskListExpanded = false;
+    state.kanbanExpanded = new Set();
+    render();
+  });
+  document.getElementById('toggleKanbanBtn').addEventListener('click', () => {
+    state.kanbanVisible = !state.kanbanVisible;
+    renderSectionVisibility();
+  });
+  document.getElementById('toggleRoadmapBtn').addEventListener('click', () => {
+    state.roadmapVisible = !state.roadmapVisible;
+    renderSectionVisibility();
+  });
+  document.querySelectorAll('a[href="#kanban"]').forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      showKanbanSection();
+    });
+  });
+  document.querySelectorAll('a[href="#roadmap"]').forEach(link => {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      showRoadmapSection();
+    });
+  });
   document.getElementById('themeToggle').addEventListener('click', () => {
     const current = document.documentElement.getAttribute('data-theme');
     const next = current === 'dark' ? 'light' : 'dark';
@@ -1132,10 +1221,12 @@ function render() {
   renderFilters();
   renderRoadmapFilters();
   renderMonthTabs();
+  renderViewAllMonthsButton();
   renderActiveMonth();
   renderTasks();
   renderKanban();
   renderRoadmap();
+  renderSectionVisibility();
   renderProposals();
   updateAdminVisibility();
   syncShowCompletedToggles();
