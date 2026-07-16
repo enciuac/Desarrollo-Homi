@@ -299,6 +299,19 @@ function renderRoadmapFilters() {
   });
 }
 
+function selectMonth(monthId) {
+  state.activeMonthId = monthId;
+  state.allMonthsView = false;
+  state.status = 'Todos';
+  state.priority = 'Todas';
+  state.query = '';
+  state.taskListExpanded = false;
+  state.kanbanExpanded = new Set();
+  const search = document.getElementById('searchInput');
+  if (search) search.value = '';
+  render();
+}
+
 function renderMonthTabs() {
   const container = document.getElementById('monthTabs');
   const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -316,23 +329,77 @@ function renderMonthTabs() {
   `).join('');
 
   container.querySelectorAll('[data-month-id]').forEach(button => {
-    button.addEventListener('click', () => {
-      state.activeMonthId = button.dataset.monthId;
-      state.allMonthsView = false;
-      state.status = 'Todos';
-      state.priority = 'Todas';
-      state.query = '';
-      state.taskListExpanded = false;
-      state.kanbanExpanded = new Set();
-      const search = document.getElementById('searchInput');
-      if (search) search.value = '';
-      render();
-    });
+    button.addEventListener('click', () => selectMonth(button.dataset.monthId));
   });
 
   container.querySelectorAll('[data-edit-month]').forEach(button => {
     button.addEventListener('click', event => {
       event.stopPropagation();
+      openMonthEditor(button.dataset.editMonth);
+    });
+  });
+}
+
+function bindFiltersToggle(buttonId, sectionId) {
+  const btn = document.getElementById(buttonId);
+  const section = document.getElementById(sectionId);
+  if (!btn || !section) return;
+
+  const sync = () => {
+    const collapsed = section.classList.contains('filters-collapsed');
+    btn.textContent = collapsed ? 'Mostrar filtros' : 'Ocultar filtros';
+    btn.setAttribute('aria-pressed', String(!collapsed));
+  };
+  sync();
+
+  btn.addEventListener('click', () => {
+    section.classList.toggle('filters-collapsed');
+    sync();
+  });
+}
+
+function setMonthDropdownOpen(open) {
+  const toggle = document.getElementById('monthDropdownToggle');
+  const menu = document.getElementById('monthDropdownMenu');
+  if (!toggle || !menu) return;
+  menu.hidden = !open;
+  toggle.classList.toggle('active', open);
+  toggle.setAttribute('aria-expanded', String(open));
+}
+
+function renderMonthDropdown() {
+  const label = document.getElementById('monthDropdownLabel');
+  const menu = document.getElementById('monthDropdownMenu');
+  if (!label || !menu) return;
+
+  const sorted = [...state.months].sort((a, b) => a.sortOrder - b.sortOrder);
+  const activeMonth = getActiveMonth();
+  label.textContent = state.allMonthsView
+    ? 'Todos los meses'
+    : (activeMonth ? activeMonth.title : 'Sin meses todavia');
+
+  if (!sorted.length) {
+    menu.innerHTML = '<span class="month-dropdown-empty">Todavia no hay meses.</span>';
+    return;
+  }
+
+  menu.innerHTML = sorted.map(month => `
+    <span class="month-dropdown-item-group">
+      <button class="month-dropdown-item ${!state.allMonthsView && state.activeMonthId === month.id ? 'active' : ''}" type="button" role="menuitem" data-month-id="${month.id}">${month.title}</button>
+      ${state.isAdmin ? `<button class="month-tab-edit" type="button" data-edit-month="${month.id}" aria-label="Editar mes ${month.title}">&#9998;</button>` : ''}
+    </span>
+  `).join('');
+
+  menu.querySelectorAll('[data-month-id]').forEach(button => {
+    button.addEventListener('click', () => {
+      setMonthDropdownOpen(false);
+      selectMonth(button.dataset.monthId);
+    });
+  });
+  menu.querySelectorAll('[data-edit-month]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      setMonthDropdownOpen(false);
       openMonthEditor(button.dataset.editMonth);
     });
   });
@@ -1132,6 +1199,19 @@ function bindEvents() {
       renderKanban();
     });
   });
+  const monthDropdown = document.getElementById('monthDropdown');
+  const monthDropdownToggle = document.getElementById('monthDropdownToggle');
+  monthDropdownToggle.addEventListener('click', () => {
+    setMonthDropdownOpen(document.getElementById('monthDropdownMenu').hidden);
+  });
+  document.addEventListener('click', event => {
+    if (monthDropdown.contains(event.target)) return;
+    setMonthDropdownOpen(false);
+  });
+
+  bindFiltersToggle('toggleTaskFiltersBtn', 'taskFiltersSection');
+  bindFiltersToggle('toggleRoadmapFiltersBtn', 'roadmapFiltersSection');
+
   document.getElementById('viewAllMonthsBtn').addEventListener('click', () => {
     state.allMonthsView = !state.allMonthsView;
     state.taskListExpanded = false;
@@ -1221,6 +1301,7 @@ function render() {
   renderFilters();
   renderRoadmapFilters();
   renderMonthTabs();
+  renderMonthDropdown();
   renderViewAllMonthsButton();
   renderActiveMonth();
   renderTasks();

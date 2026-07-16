@@ -85,6 +85,13 @@
 
       <section class="months-section" aria-label="Meses disponibles">
         <div id="monthTabs" class="month-tabs"></div>
+        <div id="monthDropdown" class="month-dropdown">
+          <button id="monthDropdownToggle" class="month-dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+            <span id="monthDropdownLabel">Selecciona un mes</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"></path></svg>
+          </button>
+          <div id="monthDropdownMenu" class="month-dropdown-menu" role="menu" hidden></div>
+        </div>
         <button id="viewAllMonthsBtn" class="secondary-btn small" type="button" aria-pressed="false">Ver todos los meses</button>
         <button id="addMonthBtn" class="secondary-btn small" type="button" hidden>Añadir mes</button>
       </section>
@@ -98,7 +105,9 @@
           <button id="addTaskBtn" class="secondary-btn small" type="button" hidden>Nueva tarea</button>
         </div>
 
-        <section class="controls-section task-controls" aria-label="Filtros del mes seleccionado">
+        <button id="toggleTaskFiltersBtn" class="secondary-btn small filters-toggle-btn" type="button" aria-pressed="false">Mostrar filtros</button>
+
+        <section id="taskFiltersSection" class="controls-section task-controls filters-collapsed" aria-label="Filtros del mes seleccionado">
           <div class="controls-card">
             <label class="search-box full-field" for="searchInput">
               <span>Buscar dentro del mes</span>
@@ -170,7 +179,8 @@
           </div>
           <button id="showAllRoadmap" class="secondary-btn small" type="button">Ver todas</button>
         </div>
-        <div class="roadmap-controls" aria-label="Filtros del roadmap">
+        <button id="toggleRoadmapFiltersBtn" class="secondary-btn small filters-toggle-btn" type="button" aria-pressed="false">Mostrar filtros</button>
+        <div id="roadmapFiltersSection" class="roadmap-controls filters-collapsed" aria-label="Filtros del roadmap">
           <label class="search-box full-field" for="roadmapSearchInput">
             <span>Buscar en el roadmap</span>
             <input id="roadmapSearchInput" type="search" placeholder="Buscar tarea, mes, prioridad..." autocomplete="off" />
