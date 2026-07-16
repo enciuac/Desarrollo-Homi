@@ -192,6 +192,7 @@ button { cursor: pointer; }
 .section-heading h2 { margin: 12px 0 8px; font-size: clamp(28px, 4vw, 44px); letter-spacing: -.04em; }
 .section-heading p { color: var(--muted); margin: 0; line-height: 1.6; }
 .split-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.heading-actions-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
 .stats-grid.compact { grid-template-columns: repeat(6, 1fr); margin: 18px 0 24px; }
 .stat-card { border-radius: var(--radius-lg); padding: 20px; }
@@ -299,9 +300,10 @@ button { cursor: pointer; }
 .priority-divider .badge { flex: none; }
 .priority-divider-line { flex: 1; height: 1px; background: var(--line); }
 .priority-divider:first-child { margin-top: 0; }
-.task-card { border-radius: var(--radius-lg); overflow: hidden; transition: transform .2s ease, box-shadow .2s ease; }
+.task-card { position: relative; border-radius: var(--radius-lg); overflow: hidden; transition: transform .2s ease, box-shadow .2s ease; }
 .task-card:hover { transform: translateY(-3px); }
 .task-button { width: 100%; border: 0; background: transparent; color: inherit; text-align: left; padding: 20px; }
+.has-edit-icon .task-button { padding-right: 56px; }
 .task-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
 .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 7px 10px; font-size: 12px; font-weight: 900; }
 .badge.green { color: var(--green); background: var(--green-soft); }
@@ -329,7 +331,7 @@ button { cursor: pointer; }
 .kanban-column-body + .show-more-btn { margin-top: 10px; }
 .roadmap-section { padding: 26px 0 20px; }
 .roadmap-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-.roadmap-card { border-radius: var(--radius-lg); padding: 18px; }
+.roadmap-card { position: relative; border-radius: var(--radius-lg); padding: 18px; }
 .roadmap-card h3 { margin: 14px 0 8px; font-size: 17px; letter-spacing: -.02em; }
 .roadmap-card p { color: var(--muted); margin: 0; line-height: 1.55; font-size: 14px; }
 .footer { display: flex; justify-content: space-between; gap: 18px; padding: 34px 0 50px; color: var(--muted); font-size: 14px; }
@@ -401,7 +403,6 @@ button { cursor: pointer; }
   .month-tab-edit { width: 28px; height: 28px; }
   .month-dropdown-toggle { padding: 9px 12px; font-size: 12px; }
   .month-dropdown-item { padding: 7px 9px; font-size: 12px; }
-  .edit-task-btn { min-height: 30px; padding: 0 10px; }
   .toggle-field span { font-size: 11px; }
   .toggle-field input { width: 30px; height: 18px; }
   .toggle-field input::after { width: 12px; height: 12px; }
@@ -441,7 +442,15 @@ button { cursor: pointer; }
   .proposal-card p { font-size: 14px; }
 }
 
-@media (max-width: 640px) { .brand-logo { width: 112px; } .brand-subtitle { display: none; } }
+@media (max-width: 640px) {
+  .brand-logo { width: 100px; }
+  .brand-subtitle { display: none; }
+  .site-header { padding: 8px 10px; margin: 10px 0 22px; gap: 10px; }
+  .header-actions { gap: 6px; }
+  .theme-toggle, .nav-toggle { width: 36px; height: 36px; font-size: 14px; }
+  .auth-icon svg { width: 16px; height: 16px; }
+  .top-nav a { padding: 10px 12px; font-size: 13px; }
+}
 
 .secondary-btn.danger { color: #b42318; border-color: rgba(180,35,24,.2); background: rgba(244,63,94,.08); }
 .roadmap-controls {
@@ -457,16 +466,21 @@ button { cursor: pointer; }
   box-shadow: 0 10px 28px rgba(23,32,51,.06);
 }
 .edit-task-btn {
-  margin: 0 18px 18px;
-  min-height: 38px;
-  padding: 0 14px;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(255,127,64,.25);
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary-dark);
-  font-weight: 900;
 }
-.roadmap-card .edit-task-btn { margin: 14px 0 0; }
+.edit-task-btn:hover { background: rgba(255,127,64,.22); }
 .modal {
   position: fixed;
   inset: 0;
@@ -543,6 +557,9 @@ button { cursor: pointer; }
   .editor-grid { grid-template-columns: 1fr; }
   .modal-card { padding: 22px; border-radius: 22px; }
   .modal-card h2 { font-size: 28px; }
+  .edit-task-btn { width: 26px; height: 26px; top: 12px; right: 12px; }
+  .edit-task-btn svg { width: 14px; height: 14px; }
+  .has-edit-icon .task-button { padding-right: 46px; }
 }
 
 .data-source-banner {

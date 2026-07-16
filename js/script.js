@@ -460,7 +460,9 @@ function filteredTasks(tasks, filters) {
 
 function taskCard(task, { isRoadmap = false, showMonth = false } = {}) {
   const editButton = state.isAdmin
-    ? `<button class="edit-task-btn" type="button" data-edit-task="${task.id}">Editar</button>`
+    ? `<button class="edit-task-btn" type="button" data-edit-task="${task.id}" aria-label="Editar tarea" title="Editar tarea">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+      </button>`
     : '';
   const shortDate = formatShortDate(task.updatedAt || task.createdAt);
   const metaBadges = [
@@ -469,9 +471,10 @@ function taskCard(task, { isRoadmap = false, showMonth = false } = {}) {
     shortDate ? `<span class="badge neutral">${shortDate}</span>` : ''
   ].join('');
   const month = (isRoadmap || showMonth) ? findMonth(task.monthId) : null;
+  const cardClass = isRoadmap ? 'roadmap-card' : 'task-card';
 
   return `
-    <article class="${isRoadmap ? 'roadmap-card' : 'task-card'}" ${isRoadmap ? '' : 'data-task-card'}>
+    <article class="${cardClass}${state.isAdmin ? ' has-edit-icon' : ''}" ${isRoadmap ? '' : 'data-task-card'}>
       <button class="task-button" type="button" aria-expanded="false">
         <div class="task-top">
           ${statusBadge(task.status)}

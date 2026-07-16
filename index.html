@@ -102,10 +102,11 @@
             <span class="eyebrow">Timeline mensual</span>
             <h2 id="activeMonthTitle">Mes</h2>
           </div>
-          <button id="addTaskBtn" class="secondary-btn small" type="button" hidden>Nueva tarea</button>
+          <div class="heading-actions-row">
+            <button id="addTaskBtn" class="secondary-btn small" type="button" hidden>Nueva tarea</button>
+            <button id="toggleTaskFiltersBtn" class="secondary-btn small filters-toggle-btn" type="button" aria-pressed="false">Mostrar filtros</button>
+          </div>
         </div>
-
-        <button id="toggleTaskFiltersBtn" class="secondary-btn small filters-toggle-btn" type="button" aria-pressed="false">Mostrar filtros</button>
 
         <section id="taskFiltersSection" class="controls-section task-controls filters-collapsed" aria-label="Filtros del mes seleccionado">
           <div class="controls-card">
@@ -177,9 +178,11 @@
             <h2>Arrastradas y proximos pasos</h2>
             <p>Tareas que siguen abiertas o pasan al siguiente bloque de trabajo.</p>
           </div>
-          <button id="showAllRoadmap" class="secondary-btn small" type="button">Ver todas</button>
+          <div class="heading-actions-row">
+            <button id="showAllRoadmap" class="secondary-btn small" type="button">Ver todas</button>
+            <button id="toggleRoadmapFiltersBtn" class="secondary-btn small filters-toggle-btn" type="button" aria-pressed="false">Mostrar filtros</button>
+          </div>
         </div>
-        <button id="toggleRoadmapFiltersBtn" class="secondary-btn small filters-toggle-btn" type="button" aria-pressed="false">Mostrar filtros</button>
         <div id="roadmapFiltersSection" class="roadmap-controls filters-collapsed" aria-label="Filtros del roadmap">
           <label class="search-box full-field" for="roadmapSearchInput">
             <span>Buscar en el roadmap</span>
